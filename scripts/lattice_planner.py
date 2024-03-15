@@ -12,7 +12,7 @@ import numpy as np
 
 class latticePlanner:
     def __init__(self):
-        rospy.init_node("lattice_planner", anonymous=True)
+        rospy.init_node("lattice_planner", anonymous=False)
 
         # (1) subscriber, publisher 선언
         rospy.Subscriber("/local_path", Path, self.path_callback)
