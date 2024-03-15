@@ -32,7 +32,7 @@ from tf.transformations import euler_from_quaternion, quaternion_from_euler
 
 class pure_pursuit:
     def __init__(self):
-        rospy.init_node("pure_pursuit", anonymous=True)
+        rospy.init_node("pure_pursuit", anonymous=False)
 
         # TODO: (1) subscriber, publisher 선언
         rospy.Subscriber("/global_path", Path, self.global_path_callback)
