@@ -73,6 +73,9 @@ class pure_pursuit:
                 break
             else:
                 print("Waiting global path data")
+                self.ctrl_cmd_msg.accel = 0.0
+                self.ctrl_cmd_msg.brake = -output
+                self.ctrl_cmd_pub.publish(self.ctrl_cmd_msg)
 
         rate = rospy.Rate(30)  # 30hz
         while not rospy.is_shutdown():
