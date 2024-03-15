@@ -58,16 +58,17 @@ class pure_pursuit:
         self.vehicle_length = 4.470
         self.lfd = 3.0
         self.min_lfd = 1
-        self.max_lfd = 30
+        self.max_lfd = 5
         self.lfd_gain = 0.78
-        self.target_velocity = 10
+        self.target_velocity = 80
+        self.window_size = 100
 
         self.pid = pidControl()
         self.vel_planning = velocityPlanning(self.target_velocity / 3.6, 0.15)
         while True:
             if self.is_global_path == True:
                 self.velocitB_list = self.vel_planning.curvedBaseVelocity(
-                    self.global_path, 50
+                    self.global_path, self.window_size
                 )
                 break
             else:
