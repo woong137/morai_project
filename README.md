@@ -17,8 +17,8 @@ moraisim 실행
 시나리오 로드
 $ roslaunch rosbridge_server rosbridge_websocket.launch
 morai sim 네트워크 설정
-`$ rosrun morai_project global_path_publisher.py`
-`$ rosrun morai_project local_path_pub.py`
-`$ rosrun morai_project EgoVehicleStatus2odom.py`
-`$ rosrun morai_project pure_pursuit_skel.py`
+$ rosrun morai_project global_path_publisher.py
+$ rosrun morai_project local_path_pub.py
+$ rosrun morai_project EgoVehicleStatus2odom.py
+$ rosrun morai_project pure_pursuit_skel.py
 ```
