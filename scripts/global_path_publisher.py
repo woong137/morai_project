@@ -37,7 +37,7 @@ def publish_path():
 
     while not rospy.is_shutdown():
         straight_path = create_straight_line_path_with_intervals(
-            (-145, -104), (0, -104), 0.1
+            (-145, -104), (150, -104), 0.1
         )
         path_pub.publish(straight_path)
         rate.sleep()
