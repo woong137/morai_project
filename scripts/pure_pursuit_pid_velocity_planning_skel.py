@@ -71,7 +71,7 @@ class pure_pursuit:
                 )
                 break
             else:
-                rospy.loginfo("Waiting global path data")
+                print("Waiting global path data")
 
         rate = rospy.Rate(30)  # 30hz
         while not rospy.is_shutdown():
@@ -88,7 +88,7 @@ class pure_pursuit:
                 if self.is_look_forward_point:
                     self.ctrl_cmd_msg.steering = steering
                 else:
-                    rospy.loginfo("no found forward point")
+                    print("no found forward point")
                     self.ctrl_cmd_msg.steering = 0.0
 
                 output = self.pid.pid(
@@ -152,7 +152,7 @@ class pure_pursuit:
         # TODO: (2) 속도 비례 Look Ahead Distance 값 설정
         self.lfd = (self.status_msg.velocity.x) * self.lfd_gain
         self.lfd = np.clip(self.lfd, self.min_lfd, self.max_lfd)
-        rospy.loginfo("lfd: %f", self.lfd)
+        print("lfd: ", self.lfd)
 
         vehicle_position = self.current_postion
         self.is_look_forward_point = False
