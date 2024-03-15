@@ -57,10 +57,10 @@ class pure_pursuit:
 
         self.vehicle_length = 4.470
         self.lfd = 3.0
-        self.min_lfd = 5
+        self.min_lfd = 1
         self.max_lfd = 30
         self.lfd_gain = 0.78
-        self.target_velocity = 40
+        self.target_velocity = 10
 
         self.pid = pidControl()
         self.vel_planning = velocityPlanning(self.target_velocity / 3.6, 0.15)
@@ -103,6 +103,9 @@ class pure_pursuit:
                     self.ctrl_cmd_msg.brake = -output
 
                 # TODO: (8) 제어입력 메세지 Publish
+                print("--------------------------")
+                print("velocity: ", self.target_velocity)
+                print("accel: ", self.ctrl_cmd_msg.accel)
                 print("steering: ", steering)
                 self.ctrl_cmd_pub.publish(self.ctrl_cmd_msg)
 
