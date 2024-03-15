@@ -58,10 +58,10 @@ class pure_pursuit:
         self.vehicle_length = 4.470
         self.lfd = 3.0
         self.min_lfd = 3
-        self.max_lfd = 10
+        self.max_lfd = 15
         self.lfd_gain = 0.78
-        self.target_velocity = 80
-        self.window_size = 110
+        self.target_velocity = 60
+        self.window_size = 200
 
         self.pid = pidControl()
         self.vel_planning = velocityPlanning(self.target_velocity / 3.6, 0.15)
@@ -109,11 +109,20 @@ class pure_pursuit:
 
                 # (8) 제어입력 메세지 Publish
                 print("--------------------------")
+                print(
+                    "current position: (",
+                    round(self.current_postion.x, 2),
+                    ",",
+                    round(self.current_postion.y, 2),
+                    ")",
+                )
                 print("target velocity: ", self.target_velocity)
                 print("current velocity: ", self.status_msg.velocity.x * 3.6)
                 print("accel: ", self.ctrl_cmd_msg.accel)
                 print("steering: ", steering)
                 print("lfd: ", self.lfd)
+                current_time = time.time()
+                print("duration time: ", current_time - prev_time)
                 self.ctrl_cmd_pub.publish(self.ctrl_cmd_msg)
 
             rate.sleep()
@@ -191,6 +200,8 @@ class pure_pursuit:
                     self.forward_point = path_point
                     self.is_look_forward_point = True
                     break
+                # print("local_path_point: ", local_path_point)
+                # print("dis: ", dis)
 
         # (4) Steering 각도 계산
         theta = atan2(local_path_point[1], local_path_point[0])
