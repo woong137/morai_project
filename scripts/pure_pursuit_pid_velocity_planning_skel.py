@@ -66,7 +66,7 @@ class pure_pursuit:
         self.vel_planning = velocityPlanning(self.target_velocity / 3.6, 0.15)
         while True:
             if self.is_global_path == True:
-                self.velocity_list = self.vel_planning.curvedBaseVelocity(
+                self.velocitB_list = self.vel_planning.curvedBaseVelocity(
                     self.global_path, 50
                 )
                 break
@@ -82,7 +82,7 @@ class pure_pursuit:
                 self.current_waypoint = self.get_current_waypoint(
                     self.status_msg, self.global_path
                 )
-                self.target_velocity = self.velocity_list[self.current_waypoint] * 3.6
+                self.target_velocity = self.velocitB_list[self.current_waypoint] * 3.6
 
                 steering = self.calc_pure_pursuit()
                 if self.is_look_forward_point:
@@ -103,7 +103,7 @@ class pure_pursuit:
                     self.ctrl_cmd_msg.brake = -output
 
                 # TODO: (8) 제어입력 메세지 Publish
-                print(steering)
+                print("steering: ", steering)
                 self.ctrl_cmd_pub.publish(self.ctrl_cmd_msg)
 
             rate.sleep()
@@ -225,22 +225,23 @@ class velocityPlanning:
             out_vel_plan.append(self.car_max_speed)
 
         for i in range(point_num, len(global_path.poses) - point_num):
-            x_list = []
-            y_list = []
+            A_list = []
+            B_list = []
             for box in range(-point_num, point_num):
                 x = global_path.poses[i + box].pose.position.x
                 y = global_path.poses[i + box].pose.position.y
-                x_list.append([-2 * x, -2 * y, 1])
-                y_list.append((-x * x) - (y * y))
+                A_list.append([-2 * x, -2 * y, 1])
+                B_list.append((-x * x) - (y * y))
 
             # TODO: (6) 도로의 곡률 계산, PPT p.390
-            x_matrix = np.array(x_list)
-            y_matrix = np.array(y_list)
-            a_matrix = np.linalg.pinv(x_matrix).dot(y_matrix)
+            # Ax = B
+            A_matrix = np.array(A_list)
+            B_matrix = np.array(B_list)
+            x_matrix = np.linalg.pinv(A_matrix).dot(B_matrix)
 
-            a = a_matrix[0]
-            b = a_matrix[1]
-            c = a_matrix[2]
+            a = x_matrix[0]
+            b = x_matrix[1]
+            c = x_matrix[2]
             r = sqrt(a * a + b * b - c)
 
             # TODO: (7) 곡률 기반 속도 계획
