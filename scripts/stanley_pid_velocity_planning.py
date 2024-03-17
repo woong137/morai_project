@@ -33,9 +33,8 @@ class stanley:
 
         # (1) subscriber, publisher 선언
         rospy.Subscriber("/global_path", Path, self.global_path_callback)
-        rospy.Subscriber("/local_path", Path, self.path_callback)
+        rospy.Subscriber("/lattice_path", Path, self.path_callback)
         ##TODO: odom 토픽 구독 삭제
-        rospy.Subscriber("/odom", Odometry, self.odom_callback)
         rospy.Subscriber("/Ego_topic", EgoVehicleStatus, self.status_callback)
 
         self.ctrl_cmd_pub = rospy.Publisher("ctrl_cmd_0", CtrlCmd, queue_size=1)
@@ -43,11 +42,10 @@ class stanley:
         self.ctrl_cmd_msg.longlCmdType = 1
 
         self.is_path = False
-        self.is_odom = False
         self.is_status = False
         self.is_global_path = False
         self.forward_point = Point()
-        self.current_postion = Point()
+        self.current_position = Point()
 
         self.vehicle_length = 4.470
         self.stanley_gain = 0.5
@@ -72,7 +70,7 @@ class stanley:
         rate = rospy.Rate(30)  # 30hz
         while not rospy.is_shutdown():
 
-            if self.is_path == True and self.is_odom == True and self.is_global_path == True and self.is_status == True:
+            if self.is_path == True and self.is_global_path == True and self.is_status == True:
                 prev_time = time.time()
 
                 self.current_waypoint = self.get_current_waypoint(
@@ -98,9 +96,9 @@ class stanley:
                 print("--------------------------")
                 print(
                     "current position: (",
-                    round(self.current_postion.x, 2),
+                    round(self.current_position.x, 2),
                     ",",
-                    round(self.current_postion.y, 2),
+                    round(self.current_position.y, 2),
                     ")",
                 )
                 print("target velocity: ", self.target_velocity)
@@ -117,20 +115,11 @@ class stanley:
         self.is_path = True
         self.path = msg
 
-    def odom_callback(self, msg):
-        self.is_odom = True
-        odom_quaternion = (
-            msg.pose.pose.orientation.x,
-            msg.pose.pose.orientation.y,
-            msg.pose.pose.orientation.z,
-            msg.pose.pose.orientation.w,
-        )
-        _, _, self.vehicle_yaw = euler_from_quaternion(odom_quaternion)
-        self.current_postion.x = msg.pose.pose.position.x
-        self.current_postion.y = msg.pose.pose.position.y
-
     def status_callback(self, msg):  ## Vehicle Status Subscriber
         self.is_status = True
+        self.current_position.x = msg.position.x
+        self.current_position.y = msg.position.y
+        self.vehicle_yaw = np.deg2rad(msg.heading)
         self.status_msg = msg
 
     def global_path_callback(self, msg):
@@ -156,15 +145,15 @@ class stanley:
         min_dist = float("inf")
         for num, i in enumerate(self.path.poses):
             path_point = i.pose.position
-            dx = self.current_postion.x - path_point.x
-            dy = self.current_postion.y - path_point.y
+            dx = self.current_position.x - path_point.x
+            dy = self.current_position.y - path_point.y
             dist = sqrt(pow(dx, 2) + pow(dy, 2))
             if min_dist > dist:
                 min_dist = dist
                 self.nearest_point = path_point
                 self.nearest_point_num = num
 
-        vehicle_position = self.current_postion
+        vehicle_position = self.current_position
         translation = [vehicle_position.x, vehicle_position.y]
 
         # (3) 좌표 변환 행렬 생성 및 변환
