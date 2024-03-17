@@ -51,7 +51,7 @@ class pure_pursuit:
         self.is_look_forward_point = False
 
         self.forward_point = Point()
-        self.current_postion = Point()
+        self.current_position = Point()
 
         self.vehicle_length = 4.470
         self.lfd = 3.0
@@ -109,9 +109,9 @@ class pure_pursuit:
                 print("--------------------------")
                 print(
                     "current position: (",
-                    round(self.current_postion.x, 2),
+                    round(self.current_position.x, 2),
                     ",",
-                    round(self.current_postion.y, 2),
+                    round(self.current_position.y, 2),
                     ")",
                 )
                 print("target velocity: ", self.target_velocity)
@@ -159,7 +159,7 @@ class pure_pursuit:
         self.lfd = (self.status_msg.velocity.x) * self.lfd_gain
         self.lfd = np.clip(self.lfd, self.min_lfd, self.max_lfd)
 
-        vehicle_position = self.current_postion
+        vehicle_position = self.current_position
         self.is_look_forward_point = False
 
         translation = [vehicle_position.x, vehicle_position.y]
