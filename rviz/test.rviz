@@ -6,10 +6,8 @@ Panels:
       Expanded:
         - /Global Options1
         - /Status1
-        - /Path1
-        - /Path2
-        - /Odometry1
-        - /Odometry1/Shape1
+        - /Global_Path1
+        - /Local_Path1
       Splitter Ratio: 0.5
     Tree Height: 549
   - Class: rviz/Selection
@@ -65,7 +63,7 @@ Visualization Manager:
       Length: 0.30000001192092896
       Line Style: Lines
       Line Width: 0.029999999329447746
-      Name: Path
+      Name: Global_Path
       Offset:
         X: 0
         Y: 0
@@ -89,7 +87,7 @@ Visualization Manager:
       Length: 0.30000001192092896
       Line Style: Lines
       Line Width: 0.029999999329447746
-      Name: Path
+      Name: Local_Path
       Offset:
         X: 0
         Y: 0
@@ -103,6 +101,30 @@ Visualization Manager:
       Topic: /local_path
       Unreliable: false
       Value: true
+    - Alpha: 1
+      Buffer Length: 1
+      Class: rviz/Path
+      Color: 239; 41; 41
+      Enabled: true
+      Head Diameter: 0.30000001192092896
+      Head Length: 0.20000000298023224
+      Length: 0.30000001192092896
+      Line Style: Lines
+      Line Width: 0.029999999329447746
+      Name: Lattice_Path
+      Offset:
+        X: 0
+        Y: 0
+        Z: 0
+      Pose Color: 255; 85; 255
+      Pose Style: None
+      Queue Size: 10
+      Radius: 0.029999999329447746
+      Shaft Diameter: 0.10000000149011612
+      Shaft Length: 0.10000000149011612
+      Topic: /lattice_path
+      Unreliable: false
+      Value: true
     - Class: rviz/TF
       Enabled: true
       Filter (blacklist): ""
@@ -110,10 +132,6 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: true
-        base_link:
-          Value: true
-        map:
-          Value: true
       Marker Alpha: 1
       Marker Scale: 1
       Name: TF
@@ -121,45 +139,8 @@ Visualization Manager:
       Show Axes: true
       Show Names: true
       Tree:
-        map:
-          base_link:
-            {}
+        {}
       Update Interval: 0
-      Value: true
-    - Angle Tolerance: 0.10000000149011612
-      Class: rviz/Odometry
-      Covariance:
-        Orientation:
-          Alpha: 0.5
-          Color: 255; 255; 127
-          Color Style: Unique
-          Frame: Local
-          Offset: 1
-          Scale: 1
-          Value: true
-        Position:
-          Alpha: 0.30000001192092896
-          Color: 204; 51; 204
-          Scale: 1
-          Value: true
-        Value: true
-      Enabled: true
-      Keep: 100
-      Name: Odometry
-      Position Tolerance: 0.10000000149011612
-      Queue Size: 10
-      Shape:
-        Alpha: 1
-        Axes Length: 1
-        Axes Radius: 0.10000000149011612
-        Color: 255; 25; 0
-        Head Length: 3
-        Head Radius: 3
-        Shaft Length: 2
-        Shaft Radius: 1
-        Value: Arrow
-      Topic: /odom
-      Unreliable: false
       Value: true
   Enabled: true
   Global Options:
@@ -189,7 +170,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 146.35049438476562
+      Distance: 472.19293212890625
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -197,17 +178,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: -101.96402740478516
-        Y: -73.67166900634766
-        Z: 46.681026458740234
+        X: 0.4123876094818115
+        Y: -40.4808349609375
+        Z: -18.046173095703125
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.0903974771499634
+      Pitch: 1.5697963237762451
       Target Frame: <Fixed Frame>
-      Yaw: 3.158581018447876
+      Yaw: 3.1554629802703857
     Saved: ~
 Window Geometry:
   Displays:
