@@ -127,7 +127,7 @@ class stanley:
 
     def get_current_waypoint(self, ego_status, global_path):
         min_dist = float("inf")
-        currnet_waypoint = -1
+        current_waypoint = -1
         for i, pose in enumerate(global_path.poses):
             dx = ego_status.position.x - pose.pose.position.x
             dy = ego_status.position.y - pose.pose.position.y
@@ -135,8 +135,8 @@ class stanley:
             dist = sqrt(pow(dx, 2) + pow(dy, 2))
             if min_dist > dist:
                 min_dist = dist
-                currnet_waypoint = i
-        return currnet_waypoint
+                current_waypoint = i
+        return current_waypoint
 
     def calc_stanley(self):
 
