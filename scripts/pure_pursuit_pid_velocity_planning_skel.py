@@ -39,6 +39,7 @@ class pure_pursuit:
         rospy.Subscriber("/local_path", Path, self.path_callback)
 
         rospy.Subscriber("/odom", Odometry, self.odom_callback)
+        ##TODO: /Ego_topic 삭제
         rospy.Subscriber("/Ego_topic", EgoVehicleStatus, self.status_callback)
         self.ctrl_cmd_pub = rospy.Publisher("ctrl_cmd_0", CtrlCmd, queue_size=1)
 
