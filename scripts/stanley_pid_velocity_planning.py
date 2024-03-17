@@ -13,13 +13,13 @@ import numpy as np
 import tf
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
 
-# stanley 은 차량의 차량의 종 횡 방향 제어 예제입니다.
+# reference paper: http://robots.stanford.edu/papers/thrun.stanley05.pdf
 # longlCmdType 1(Throttle control) 이용합니다.
 
 # 노드 실행 순서
 # 1. subscriber, publisher 선언
-# 2. 속도 비례 Look Ahead Distance 값 설정
-# 3. 좌표 변환 행렬 생성
+# 2. 차량의 현재 위치와 경로 사이의 가장 가까운 점 찾기
+# 3. 좌표 변환 행렬 생성 및 변환
 # 4. Steering 각도 계산
 # 5. PID 제어 생성
 # 6. 도로의 곡률 계산
@@ -29,11 +29,12 @@ from tf.transformations import euler_from_quaternion, quaternion_from_euler
 
 class stanley:
     def __init__(self):
-        rospy.init_node("pure_pursuit", anonymous=False)
+        rospy.init_node("stanley", anonymous=False)
 
         # (1) subscriber, publisher 선언
         rospy.Subscriber("/global_path", Path, self.global_path_callback)
         rospy.Subscriber("/local_path", Path, self.path_callback)
+        ##TODO: odom 토픽 구독 삭제
         rospy.Subscriber("/odom", Odometry, self.odom_callback)
         rospy.Subscriber("/Ego_topic", EgoVehicleStatus, self.status_callback)
 
@@ -49,10 +50,7 @@ class stanley:
         self.current_postion = Point()
 
         self.vehicle_length = 4.470
-        self.lfd = 3.0
-        self.min_lfd = 3
-        self.max_lfd = 15
-        self.lfd_gain = 0.78
+        self.stanley_gain = 0.5
         self.target_velocity = 60
         self.window_size = 200
 
@@ -74,20 +72,16 @@ class stanley:
         rate = rospy.Rate(30)  # 30hz
         while not rospy.is_shutdown():
 
-            if self.is_path == True and self.is_odom == True and self.is_status == True:
+            if self.is_path == True and self.is_odom == True and self.is_global_path == True and self.is_status == True:
                 prev_time = time.time()
 
                 self.current_waypoint = self.get_current_waypoint(
                     self.status_msg, self.global_path
                 )
                 self.target_velocity = self.velocitB_list[self.current_waypoint] * 3.6
-                ##TODO: is_look_forward_point 삭제
+                ##TODO: 가까운 점이 확인 안 될 때 어떻게 할 것인지
                 steering = self.calc_stanley()
-                if self.is_look_forward_point:
-                    self.ctrl_cmd_msg.steering = steering
-                else:
-                    print("no found forward point")
-                    self.ctrl_cmd_msg.steering = 0.0
+                self.ctrl_cmd_msg.steering = steering
 
                 output = self.pid.pid(
                     self.target_velocity, self.status_msg.velocity.x * 3.6
@@ -113,7 +107,6 @@ class stanley:
                 print("current velocity: ", self.status_msg.velocity.x * 3.6)
                 print("accel: ", self.ctrl_cmd_msg.accel)
                 print("steering: ", steering)
-                print("lfd: ", self.lfd)
                 current_time = time.time()
                 print("duration time: ", current_time - prev_time)
                 self.ctrl_cmd_pub.publish(self.ctrl_cmd_msg)
@@ -157,9 +150,7 @@ class stanley:
                 currnet_waypoint = i
         return currnet_waypoint
 
-    def calc_stanley(
-        self,
-    ):
+    def calc_stanley(self):
 
         # (2) 차량의 현재 위치와 경로 사이의 가장 가까운 점 찾기
         min_dist = float("inf")
@@ -173,35 +164,31 @@ class stanley:
                 self.nearest_point = path_point
                 self.nearest_point_num = num
 
-        # (3) 좌표 변환 행렬 생성
+        vehicle_position = self.current_postion
+        translation = [vehicle_position.x, vehicle_position.y]
+
+        # (3) 좌표 변환 행렬 생성 및 변환
+        dx = self.path.poses[self.nearest_point_num + 1].pose.position.x - self.nearest_point.x
+        dy = self.path.poses[self.nearest_point_num + 1].pose.position.y - self.nearest_point.y
+        path_yaw = atan2(dy, dx)
+
         trans_matrix = np.array(
             [
-                [cos(self.vehicle_yaw), -sin(self.vehicle_yaw), translation[0]],
-                [sin(self.vehicle_yaw), cos(self.vehicle_yaw), translation[1]],
+                [cos(path_yaw), -sin(path_yaw), translation[0]],
+                [sin(path_yaw), cos(path_yaw), translation[1]],
                 [0, 0, 1],
             ]
         )
 
         det_trans_matrix = np.linalg.inv(trans_matrix)
-
-        for num, i in enumerate(self.path.poses):
-            path_point = i.pose.position
-
-            global_path_point = [path_point.x, path_point.y, 1]
-            local_path_point = det_trans_matrix.dot(global_path_point)
-
-            if local_path_point[0] > 0:
-                dis = sqrt(pow(local_path_point[0], 2) + pow(local_path_point[1], 2))
-                if dis >= self.lfd:
-                    self.forward_point = path_point
-                    self.is_look_forward_point = True
-                    break
-                # print("local_path_point: ", local_path_point)
-                # print("dis: ", dis)
+        global_path_point = [self.nearest_point.x, self.nearest_point.y, 1]
+        local_path_point = det_trans_matrix.dot(global_path_point)
 
         # (4) Steering 각도 계산
-        theta = atan2(local_path_point[1], local_path_point[0])
-        steering = atan2(2.0 * self.vehicle_length * local_path_point[1], pow(dis, 2))
+        psi = path_yaw - self.vehicle_yaw
+        steering = psi + atan2(
+            self.stanley_gain * local_path_point[1], self.status_msg.velocity.x
+        )
 
         return steering
 
@@ -282,6 +269,6 @@ class velocityPlanning:
 
 if __name__ == "__main__":
     try:
-        test_track = pure_pursuit()
+        test_track = stanley()
     except rospy.ROSInterruptException:
         pass
