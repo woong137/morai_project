@@ -14,10 +14,11 @@ class path_pub:
 
     def __init__(self):
         rospy.init_node("local_path_publisher", anonymous=False)
-        rospy.Subscriber("/odom", Odometry, self.odom_callback)
+        rospy.Subscriber("/Ego_topic", EgoVehicleStatus, self.status_callback)
         rospy.Subscriber("/global_path", Path, self.global_Path_callback)
 
-        self.local_path_pub = rospy.Publisher("/local_path", Path, queue_size=1)
+        self.local_path_pub = rospy.Publisher(
+            "/local_path", Path, queue_size=1)
 
         # 초기화
         self.global_path_msg = Path()
@@ -85,11 +86,10 @@ class path_pub:
 
             rate.sleep()
 
-    def odom_callback(self, msg):
+    def status_callback(self, msg):
+        self.x = msg.position.x
+        self.y = msg.position.y
         self.is_status = True
-
-        self.x = msg.pose.pose.position.x
-        self.y = msg.pose.pose.position.y
 
     def global_Path_callback(self, msg):
         self.global_path_msg = msg
