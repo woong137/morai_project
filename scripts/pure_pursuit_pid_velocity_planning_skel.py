@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import os, sys
+import os
+import sys
 import time
 import rospy
 import rospkg
@@ -15,7 +16,7 @@ from tf.transformations import euler_from_quaternion, quaternion_from_euler
 
 # advanced_purepursuit 은 차량의 차량의 종 횡 방향 제어 예제입니다.
 # Purpusuit 알고리즘의 Look Ahead Distance 값을 속도에 비례하여 가변 값으로 만들어 횡 방향 주행 성능을 올립니다.
-# 횡방향 제어 입력은 주행할 Local Path (지역경로) 와 차량의 상태 정보 Odometry 를 받아 차량을 제어 합니다.
+# 횡방향 제어 입력은 주행할 Local Path (지역경로) 와 차량의 위치 정보 Ego_topic를 받아 차량을 제어 합니다.
 # 종방향 제어 입력은 목표 속도를 지정 한뒤 목표 속도에 도달하기 위한 Throttle control 을 합니다.
 # 종방향 제어 입력은 longlCmdType 1(Throttle control) 이용합니다.
 
@@ -37,17 +38,14 @@ class pure_pursuit:
         # (1) subscriber, publisher 선언
         rospy.Subscriber("/global_path", Path, self.global_path_callback)
         rospy.Subscriber("/local_path", Path, self.path_callback)
-
-        rospy.Subscriber("/odom", Odometry, self.odom_callback)
-        ##TODO: /Ego_topic 삭제
         rospy.Subscriber("/Ego_topic", EgoVehicleStatus, self.status_callback)
-        self.ctrl_cmd_pub = rospy.Publisher("ctrl_cmd_0", CtrlCmd, queue_size=1)
+        self.ctrl_cmd_pub = rospy.Publisher(
+            "ctrl_cmd_0", CtrlCmd, queue_size=1)
 
         self.ctrl_cmd_msg = CtrlCmd()
         self.ctrl_cmd_msg.longlCmdType = 1
 
         self.is_path = False
-        self.is_odom = False
         self.is_status = False
         self.is_global_path = False
 
@@ -82,7 +80,7 @@ class pure_pursuit:
         rate = rospy.Rate(30)  # 30hz
         while not rospy.is_shutdown():
 
-            if self.is_path == True and self.is_odom == True and self.is_status == True:
+            if self.is_path == True and self.is_status == True and self.is_global_path == True:
                 prev_time = time.time()
 
                 self.current_waypoint = self.get_current_waypoint(
@@ -132,20 +130,11 @@ class pure_pursuit:
         self.is_path = True
         self.path = msg
 
-    def odom_callback(self, msg):
-        self.is_odom = True
-        odom_quaternion = (
-            msg.pose.pose.orientation.x,
-            msg.pose.pose.orientation.y,
-            msg.pose.pose.orientation.z,
-            msg.pose.pose.orientation.w,
-        )
-        _, _, self.vehicle_yaw = euler_from_quaternion(odom_quaternion)
-        self.current_postion.x = msg.pose.pose.position.x
-        self.current_postion.y = msg.pose.pose.position.y
-
-    def status_callback(self, msg):  ## Vehicle Status Subscriber
+    def status_callback(self, msg):  # Vehicle Status Subscriber
         self.is_status = True
+        self.current_position.x = msg.position.x
+        self.current_position.y = msg.position.y
+        self.vehicle_yaw = np.deg2rad(msg.heading)
         self.status_msg = msg
 
     def global_path_callback(self, msg):
@@ -154,7 +143,7 @@ class pure_pursuit:
 
     def get_current_waypoint(self, ego_status, global_path):
         min_dist = float("inf")
-        currnet_waypoint = -1
+        current_waypoint = -1
         for i, pose in enumerate(global_path.poses):
             dx = ego_status.position.x - pose.pose.position.x
             dy = ego_status.position.y - pose.pose.position.y
@@ -162,12 +151,10 @@ class pure_pursuit:
             dist = sqrt(pow(dx, 2) + pow(dy, 2))
             if min_dist > dist:
                 min_dist = dist
-                currnet_waypoint = i
-        return currnet_waypoint
+                current_waypoint = i
+        return current_waypoint
 
-    def calc_pure_pursuit(
-        self,
-    ):
+    def calc_pure_pursuit(self):
 
         # (2) 속도 비례 Look Ahead Distance 값 설정
         self.lfd = (self.status_msg.velocity.x) * self.lfd_gain
@@ -196,7 +183,8 @@ class pure_pursuit:
             local_path_point = det_trans_matrix.dot(global_path_point)
 
             if local_path_point[0] > 0:
-                dis = sqrt(pow(local_path_point[0], 2) + pow(local_path_point[1], 2))
+                dis = sqrt(
+                    pow(local_path_point[0], 2) + pow(local_path_point[1], 2))
                 if dis >= self.lfd:
                     self.forward_point = path_point
                     self.is_look_forward_point = True
