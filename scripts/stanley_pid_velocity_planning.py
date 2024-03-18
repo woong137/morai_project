@@ -51,7 +51,7 @@ class stanley:
         self.vehicle_length = 4.470
         self.stanley_gain = 0.5
         self.target_velocity = 60
-        self.window_size = 200
+        self.window_size = 10
 
         self.pid = pidControl()
         self.vel_planning = velocityPlanning(self.target_velocity / 3.6, 0.15)
@@ -67,6 +67,7 @@ class stanley:
                 self.ctrl_cmd_msg.accel = 0.0
                 self.ctrl_cmd_msg.brake = -1.0
                 self.ctrl_cmd_pub.publish(self.ctrl_cmd_msg)
+            rospy.sleep(0.5)
 
         rate = rospy.Rate(2)  # 30hz
         while not rospy.is_shutdown():
@@ -102,13 +103,13 @@ class stanley:
                     round(self.current_position.y, 2),
                     ")",
                 )
-                print("target velocity: ", round(self.target_velocity, 2))
-                print("current velocity: ", round(
-                    self.status_msg.velocity.x * 3.6, 2))
-                print("accel: ", round(self.ctrl_cmd_msg.accel, 2))
-                print("steering: ", round(steering, 2))
+                # print("target velocity: ", round(self.target_velocity, 2))
+                # print("current velocity: ", round(
+                #     self.status_msg.velocity.x * 3.6, 2))
+                # print("accel: ", round(self.ctrl_cmd_msg.accel, 2))
+                # print("steering: ", round(steering, 2))
                 current_time = time.time()
-                print("duration time: ", round(current_time - prev_time, 2))
+                # print("duration time: ", round(current_time - prev_time, 2))
                 self.ctrl_cmd_pub.publish(self.ctrl_cmd_msg)
 
             rate.sleep()
@@ -159,10 +160,14 @@ class stanley:
         translation = [vehicle_position.x, vehicle_position.y]
 
         # (3) 좌표 변환 행렬 생성 및 변환
-        dx = self.path.poses[self.nearest_point_num +
-                             1].pose.position.x - self.nearest_point.x
-        dy = self.path.poses[self.nearest_point_num +
-                             1].pose.position.y - self.nearest_point.y
+        num = 1
+        while True:
+            dx = self.path.poses[self.nearest_point_num + num].pose.position.x - self.nearest_point.x
+            dy = self.path.poses[self.nearest_point_num + num].pose.position.y - self.nearest_point.y
+            distance = sqrt(pow(dx, 2) + pow(dy, 2))
+            num += 1
+            if distance > 0.01:
+                break
         path_yaw = atan2(dy, dx)
 
         trans_matrix = np.array(
@@ -176,14 +181,22 @@ class stanley:
         det_trans_matrix = np.linalg.inv(trans_matrix)
         global_path_point = [self.nearest_point.x, self.nearest_point.y, 1]
         local_path_point = det_trans_matrix.dot(global_path_point)
-        print("local_path_point: (", round(local_path_point[0], 2),
-              ",", round(local_path_point[1], 2), ")")
 
         # (4) Steering 각도 계산
         psi = path_yaw - self.vehicle_yaw
         steering = psi + atan2(
             self.stanley_gain * local_path_point[1], self.status_msg.velocity.x
         )
+        print("nearest_point_global_path_point: (", round(
+            global_path_point[0], 2), ",", round(global_path_point[1], 2), ")")
+        print("nearest_point_local_path_point: (", round(local_path_point[0], 2),
+              ",", round(local_path_point[1], 2), ")")
+        print("path_yaw: ", round(path_yaw, 2))
+        print("vehicle_yaw: ", round(self.vehicle_yaw, 2))
+        print("psi: ", round(psi, 2))
+        print("atan2: ", round(atan2(self.stanley_gain * local_path_point[1],
+                                     self.status_msg.velocity.x), 2))
+        print("steering: ", round(steering, 2))
 
         return steering
 
@@ -243,6 +256,7 @@ class velocityPlanning:
             r = sqrt(a * a + b * b - c)
 
             # (7) 곡률 기반 속도 계획
+            # TODO: 회전할 때 r값이 얼마나 나오는지 출력해보기
             if r > 50:
                 v_max = self.car_max_speed
             else:
