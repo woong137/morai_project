@@ -8,6 +8,7 @@ Panels:
         - /Status1
         - /Global_Path1
         - /Local_Path1
+        - /TF1
       Splitter Ratio: 0.5
     Tree Height: 549
   - Class: rviz/Selection
@@ -132,14 +133,20 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: true
+        base_link:
+          Value: true
+        map:
+          Value: true
       Marker Alpha: 1
-      Marker Scale: 1
+      Marker Scale: 50
       Name: TF
       Show Arrows: true
       Show Axes: true
       Show Names: true
       Tree:
-        {}
+        map:
+          base_link:
+            {}
       Update Interval: 0
       Value: true
   Enabled: true
@@ -170,7 +177,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 472.19293212890625
+      Distance: 513.734619140625
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -206,5 +213,5 @@ Window Geometry:
   Views:
     collapsed: true
   Width: 1200
-  X: 72
-  Y: 27
+  X: -668
+  Y: 410
