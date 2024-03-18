@@ -19,7 +19,7 @@ from tf.transformations import euler_from_quaternion, quaternion_from_euler
 
 # 노드 실행 순서
 # 1. subscriber, publisher 선언
-# 2. 차량의 현재 위치와 경로 사이의 가장 가까운 점 찾기
+# 2. 앞바퀴 중심점과 경로 사이의 가장 가까운 점 찾기
 # 3. 좌표 변환 행렬 생성 및 변환
 # 4. Steering 각도 계산
 # 5. PID 제어 생성
@@ -45,10 +45,9 @@ class stanley:
         self.is_path = False
         self.is_status = False
         self.is_global_path = False
-        self.forward_point = Point()
         self.current_position = Point()
 
-        self.vehicle_length = 4.470
+        self.wheel_base = 2.7
         self.stanley_gain = 0.5
         self.target_velocity = 20
         self.window_size = 20
@@ -73,7 +72,6 @@ class stanley:
         while not rospy.is_shutdown():
 
             if self.is_path == True and self.is_global_path == True and self.is_status == True:
-                prev_time = time.time()
 
                 self.current_waypoint = self.get_current_waypoint(
                     self.status_msg, self.global_path
@@ -108,7 +106,6 @@ class stanley:
                 #     self.status_msg.velocity.x * 3.6, 2))
                 # print("accel: ", round(self.ctrl_cmd_msg.accel, 2))
                 # print("steering: ", round(steering, 2))
-                current_time = time.time()
                 # print("duration time: ", round(current_time - prev_time, 2))
                 self.ctrl_cmd_pub.publish(self.ctrl_cmd_msg)
 
@@ -143,8 +140,7 @@ class stanley:
         return current_waypoint
 
     def calc_stanley(self):
-
-        # (2) 차량의 현재 위치와 경로 사이의 가장 가까운 점 찾기
+        # (2) 차량의 앞바퀴 중심점과 경로 사이의 가장 가까운 점 찾기
         min_dist = float("inf")
         for num, i in enumerate(self.path.poses):
             path_point = i.pose.position
@@ -187,16 +183,6 @@ class stanley:
         steering = psi + atan2(
             self.stanley_gain * local_path_point[1], self.status_msg.velocity.x
         )
-        print("nearest_point_global_path_point: (", round(
-            global_path_point[0], 2), ",", round(global_path_point[1], 2), ")")
-        print("nearest_point_local_path_point: (", round(local_path_point[0], 2),
-              ",", round(local_path_point[1], 2), ")")
-        print("path_yaw: ", round(path_yaw, 2))
-        print("vehicle_yaw: ", round(self.vehicle_yaw, 2))
-        print("psi: ", round(psi, 2))
-        print("atan2: ", round(atan2(self.stanley_gain * local_path_point[1],
-                                     self.status_msg.velocity.x), 2))
-        print("steering: ", round(steering, 2))
 
         return steering
 
