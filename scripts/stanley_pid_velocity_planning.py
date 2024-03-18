@@ -52,6 +52,7 @@ class stanley:
         self.stanley_gain = 0.5
         self.target_velocity = 60
         self.window_size = 10
+        rate = rospy.Rate(30)
 
         self.pid = pidControl()
         self.vel_planning = velocityPlanning(self.target_velocity / 3.6, 0.15)
@@ -69,7 +70,6 @@ class stanley:
                 self.ctrl_cmd_pub.publish(self.ctrl_cmd_msg)
             rospy.sleep(0.5)
 
-        rate = rospy.Rate(2)  # 30hz
         while not rospy.is_shutdown():
 
             if self.is_path == True and self.is_global_path == True and self.is_status == True:
