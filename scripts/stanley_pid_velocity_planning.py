@@ -73,12 +73,22 @@ class stanley:
 
             if self.is_path == True and self.is_global_path == True and self.is_status == True:
 
+                front_wheel_position = Point()
+                front_wheel_position.x = (
+                    self.current_position.x +
+                    self.wheel_base * cos(self.vehicle_yaw)
+                )
+                front_wheel_position.y = (
+                    self.current_position.y +
+                    self.wheel_base * sin(self.vehicle_yaw)
+                )
+
                 self.current_waypoint = self.get_current_waypoint(
                     self.status_msg, self.global_path
                 )
                 self.target_velocity = self.velocitB_list[self.current_waypoint] * 3.6
                 # TODO: 가까운 점이 확인 안 될 때 어떻게 할 것인지
-                steering = self.calc_stanley()
+                steering = self.calc_stanley(front_wheel_position)
                 self.ctrl_cmd_msg.steering = steering
 
                 output = self.pid.pid(
@@ -139,27 +149,28 @@ class stanley:
                 current_waypoint = i
         return current_waypoint
 
-    def calc_stanley(self):
+    def calc_stanley(self, front_wheel_position):
         # (2) 차량의 앞바퀴 중심점과 경로 사이의 가장 가까운 점 찾기
         min_dist = float("inf")
         for num, i in enumerate(self.path.poses):
             path_point = i.pose.position
-            dx = self.current_position.x - path_point.x
-            dy = self.current_position.y - path_point.y
+            dx = front_wheel_position.x - path_point.x
+            dy = front_wheel_position.y - path_point.y
             dist = sqrt(pow(dx, 2) + pow(dy, 2))
             if min_dist > dist:
                 min_dist = dist
                 self.nearest_point = path_point
                 self.nearest_point_num = num
 
-        vehicle_position = self.current_position
-        translation = [vehicle_position.x, vehicle_position.y]
+        translation = [front_wheel_position.x, front_wheel_position.y]
 
         # (3) 좌표 변환 행렬 생성 및 변환
         num = 1
         while True:
-            dx = self.path.poses[self.nearest_point_num + num].pose.position.x - self.nearest_point.x
-            dy = self.path.poses[self.nearest_point_num + num].pose.position.y - self.nearest_point.y
+            dx = self.path.poses[self.nearest_point_num +
+                                 num].pose.position.x - self.nearest_point.x
+            dy = self.path.poses[self.nearest_point_num +
+                                 num].pose.position.y - self.nearest_point.y
             distance = sqrt(pow(dx, 2) + pow(dy, 2))
             num += 1
             if distance > 0.01:
