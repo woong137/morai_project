@@ -25,12 +25,12 @@ class path_pub:
         self.global_path_msg.header.frame_id = "/map"
 
         self.is_status = False
-        self.local_path_size = 200
+        self.local_path_size = 30
 
         self.x = 0
         self.y = 0
 
-        rate = rospy.Rate(20)  # 20hz
+        rate = rospy.Rate(30)
         while not rospy.is_shutdown():
 
             if self.is_status == True:
