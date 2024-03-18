@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import os, sys
+import os
+import sys
 import time
 import rospy
 import rospkg
@@ -36,7 +37,8 @@ class stanley:
         rospy.Subscriber("/lattice_path", Path, self.path_callback)
         rospy.Subscriber("/Ego_topic", EgoVehicleStatus, self.status_callback)
 
-        self.ctrl_cmd_pub = rospy.Publisher("ctrl_cmd_0", CtrlCmd, queue_size=1)
+        self.ctrl_cmd_pub = rospy.Publisher(
+            "ctrl_cmd_0", CtrlCmd, queue_size=1)
         self.ctrl_cmd_msg = CtrlCmd()
         self.ctrl_cmd_msg.longlCmdType = 1
 
@@ -66,7 +68,7 @@ class stanley:
                 self.ctrl_cmd_msg.brake = -1.0
                 self.ctrl_cmd_pub.publish(self.ctrl_cmd_msg)
 
-        rate = rospy.Rate(30)  # 30hz
+        rate = rospy.Rate(2)  # 30hz
         while not rospy.is_shutdown():
 
             if self.is_path == True and self.is_global_path == True and self.is_status == True:
@@ -76,7 +78,7 @@ class stanley:
                     self.status_msg, self.global_path
                 )
                 self.target_velocity = self.velocitB_list[self.current_waypoint] * 3.6
-                ##TODO: 가까운 점이 확인 안 될 때 어떻게 할 것인지
+                # TODO: 가까운 점이 확인 안 될 때 어떻게 할 것인지
                 steering = self.calc_stanley()
                 self.ctrl_cmd_msg.steering = steering
 
@@ -100,12 +102,13 @@ class stanley:
                     round(self.current_position.y, 2),
                     ")",
                 )
-                print("target velocity: ", self.target_velocity)
-                print("current velocity: ", self.status_msg.velocity.x * 3.6)
-                print("accel: ", self.ctrl_cmd_msg.accel)
-                print("steering: ", steering)
+                print("target velocity: ", round(self.target_velocity, 2))
+                print("current velocity: ", round(
+                    self.status_msg.velocity.x * 3.6, 2))
+                print("accel: ", round(self.ctrl_cmd_msg.accel, 2))
+                print("steering: ", round(steering, 2))
                 current_time = time.time()
-                print("duration time: ", current_time - prev_time)
+                print("duration time: ", round(current_time - prev_time, 2))
                 self.ctrl_cmd_pub.publish(self.ctrl_cmd_msg)
 
             rate.sleep()
@@ -114,7 +117,7 @@ class stanley:
         self.is_path = True
         self.path = msg
 
-    def status_callback(self, msg):  ## Vehicle Status Subscriber
+    def status_callback(self, msg):  # Vehicle Status Subscriber
         self.is_status = True
         self.current_position.x = msg.position.x
         self.current_position.y = msg.position.y
@@ -156,8 +159,10 @@ class stanley:
         translation = [vehicle_position.x, vehicle_position.y]
 
         # (3) 좌표 변환 행렬 생성 및 변환
-        dx = self.path.poses[self.nearest_point_num + 1].pose.position.x - self.nearest_point.x
-        dy = self.path.poses[self.nearest_point_num + 1].pose.position.y - self.nearest_point.y
+        dx = self.path.poses[self.nearest_point_num +
+                             1].pose.position.x - self.nearest_point.x
+        dy = self.path.poses[self.nearest_point_num +
+                             1].pose.position.y - self.nearest_point.y
         path_yaw = atan2(dy, dx)
 
         trans_matrix = np.array(
@@ -171,6 +176,8 @@ class stanley:
         det_trans_matrix = np.linalg.inv(trans_matrix)
         global_path_point = [self.nearest_point.x, self.nearest_point.y, 1]
         local_path_point = det_trans_matrix.dot(global_path_point)
+        print("local_path_point: (", round(local_path_point[0], 2),
+              ",", round(local_path_point[1], 2), ")")
 
         # (4) Steering 각도 계산
         psi = path_yaw - self.vehicle_yaw
