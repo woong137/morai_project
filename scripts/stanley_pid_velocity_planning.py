@@ -50,8 +50,8 @@ class stanley:
 
         self.vehicle_length = 4.470
         self.stanley_gain = 0.5
-        self.target_velocity = 60
-        self.window_size = 10
+        self.target_velocity = 20
+        self.window_size = 20
         rate = rospy.Rate(30)
 
         self.pid = pidControl()
