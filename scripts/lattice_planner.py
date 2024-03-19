@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import os, sys
+import os
+import sys
 import rospy
 from math import cos, sin, pi, sqrt, pow, atan2
 from morai_msgs.msg import EgoVehicleStatus, ObjectStatusList
@@ -17,9 +18,11 @@ class latticePlanner:
         # (1) subscriber, publisher 선언
         rospy.Subscriber("/local_path", Path, self.path_callback)
         rospy.Subscriber("/Ego_topic", EgoVehicleStatus, self.status_callback)
-        rospy.Subscriber("/Object_topic", ObjectStatusList, self.object_callback)
+        rospy.Subscriber("/Object_topic", ObjectStatusList,
+                         self.object_callback)
 
-        self.lattice_path_pub = rospy.Publisher("/lattice_path", Path, queue_size=1)
+        self.lattice_path_pub = rospy.Publisher(
+            "/lattice_path", Path, queue_size=1)
 
         self.is_path = False
         self.is_status = False
@@ -30,13 +33,15 @@ class latticePlanner:
 
             if self.is_path and self.is_status and self.is_obj:
                 if self.checkObject(self.local_path, self.object_data):
-                    lattice_path = self.latticePlanner(self.local_path, self.status_msg)
+                    lattice_path = self.latticePlanner(
+                        self.local_path, self.status_msg)
                     lattice_path_index = self.collision_check(
                         self.object_data, lattice_path
                     )
 
                     # (7)  lattice 경로 메세지 Publish
-                    self.lattice_path_pub.publish(lattice_path[lattice_path_index])
+                    self.lattice_path_pub.publish(
+                        lattice_path[lattice_path_index])
                 else:
                     self.lattice_path_pub.publish(self.local_path)
             rate.sleep()
@@ -69,7 +74,8 @@ class latticePlanner:
                 for path_pos in out_path[path_num].poses:
                     dis = sqrt(
                         pow(obstacle.position.x - path_pos.pose.position.x, 2)
-                        + pow(obstacle.position.y - path_pos.pose.position.y, 2)
+                        + pow(obstacle.position.y -
+                              path_pos.pose.position.y, 2)
                     )
                     if dis < 1.5:
                         lane_weight[path_num] = lane_weight[path_num] + 100
@@ -82,7 +88,7 @@ class latticePlanner:
         self.is_path = True
         self.local_path = msg
 
-    def status_callback(self, msg):  ## Vehicl Status Subscriber
+    def status_callback(self, msg):  # Vehicle Status Subscriber
         self.is_status = True
         self.status_msg = msg
 
@@ -127,7 +133,8 @@ class latticePlanner:
                 global_ref_start_next_point[1] - global_ref_start_point[1],
                 global_ref_start_next_point[0] - global_ref_start_point[0],
             )
-            translation = [global_ref_start_point[0], global_ref_start_point[1]]
+            translation = [global_ref_start_point[0],
+                           global_ref_start_point[1]]
 
             trans_matrix = np.array(
                 [
@@ -174,7 +181,8 @@ class latticePlanner:
 
             for i in range(len(lane_off_set)):
                 local_lattice_points.append(
-                    [local_end_point[0][0], local_end_point[1][0] + lane_off_set[i], 1]
+                    [local_end_point[0][0], local_end_point[1]
+                        [0] + lane_off_set[i], 1]
                 )
 
             # TODO: (4) Lattice 충돌 회피 경로 생성
@@ -229,7 +237,8 @@ class latticePlanner:
                 out_path.append(lattice_path)
 
             # Add_point
-            add_point_size = min(int(vehicle_velocity * 2), len(ref_path.poses))
+            add_point_size = min(
+                int(vehicle_velocity * 2), len(ref_path.poses))
 
             for i in range(look_distance * 2, add_point_size):
                 if i + 1 < len(ref_path.poses):
@@ -245,14 +254,17 @@ class latticePlanner:
                     ]
                     tmp_t = np.array(
                         [
-                            [cos(tmp_theta), -sin(tmp_theta), tmp_translation[0]],
-                            [sin(tmp_theta), cos(tmp_theta), tmp_translation[1]],
+                            [cos(tmp_theta), -sin(tmp_theta),
+                             tmp_translation[0]],
+                            [sin(tmp_theta), cos(tmp_theta),
+                             tmp_translation[1]],
                             [0, 0, 1],
                         ]
                     )
 
                     for lane_num in range(len(lane_off_set)):
-                        local_result = np.array([[0], [lane_off_set[lane_num]], [1]])
+                        local_result = np.array(
+                            [[0], [lane_off_set[lane_num]], [1]])
                         global_result = tmp_t.dot(local_result)
 
                         read_pose = PoseStamped()
