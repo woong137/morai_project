@@ -55,12 +55,12 @@ class stanley:
 
         self.wheel_base = 2.7
         self.stanley_gain = 1.0
-        self.target_velocity = 30
+        self.target_velocity = 30 # km/h
         self.window_size = 20
         rate = rospy.Rate(50)
 
-        self.vel_pid = pidControl()
-        self.pos_pid = pidControl(10, 0.0, 0.0)
+        self.vel_pid = pidControl(0.3, 0.0, 0.03)
+        self.pos_pid = pidControl(1, 0.0, 0.0)
 
         self.vel_planning = velocityPlanning(self.target_velocity / 3.6, 0.15)
         while True:
@@ -129,11 +129,23 @@ class stanley:
                         self.switcher = "stop"
 
                 elif self.switcher == "stop":
-                    # TODO: 거리에 대해 P 제어를 통해 정지
                     self.ctrl_cmd_msg.longlCmdType = 2
                     vel_input = self.pos_pid.pid(
                         self.end_position.x, self.current_position.x)
+                    # vel_input vel_max로 제한
+                    if vel_input > self.target_velocity:
+                        vel_input = self.target_velocity
                     self.ctrl_cmd_msg.velocity = vel_input
+
+                    arrived_tol = 0.1
+                    if self.current_position.x - self.end_position.x < arrived_tol:
+                        self.switcher = "arrived"
+
+                elif self.switcher == "arrived":
+                    self.ctrl_cmd_msg.longlCmdType = 2
+                    self.ctrl_cmd_msg.velocity = 0.0
+                    print("arrived")
+                    break
 
                 else:
                     print("switcher error")
@@ -193,14 +205,18 @@ class stanley:
         while True:
             # print("nearest_point: (", round(nearest_point.x, 2), ",", round(
             #     nearest_point.y, 2), ")")
-            dx = self.path.poses[nearest_point_num +
-                                 num].pose.position.x - nearest_point.x
-            dy = self.path.poses[nearest_point_num +
-                                 num].pose.position.y - nearest_point.y
-            distance = sqrt(pow(dx, 2) + pow(dy, 2))
-            num += 1
-            if distance > 0.01:
-                break
+            if nearest_point_num + num < len(self.path.poses):
+                dx = self.path.poses[nearest_point_num +
+                                    num].pose.position.x - nearest_point.x
+                dy = self.path.poses[nearest_point_num +
+                                    num].pose.position.y - nearest_point.y
+                distance = sqrt(pow(dx, 2) + pow(dy, 2))
+                num += 1
+                if distance > 0.01:
+                    break
+            else:
+                steering = 0
+                return steering
 
         path_yaw = atan2(dy, dx)
 
@@ -285,8 +301,6 @@ class velocityPlanning:
             r = sqrt(a * a + b * b - c)
 
             # (7) 곡률 기반 속도 계획
-            # TODO: 회전할 때 r값이 얼마나 나오는지 출력해보기
-            print('r: ', r)
             v_max = sqrt(r * 9.8 * self.road_friction)
 
             if v_max > self.car_max_speed:
