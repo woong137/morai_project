@@ -30,8 +30,9 @@ class path_pub:
         self.x = 0
         self.y = 0
         self.threshold = 10
+        self.current_waypoint = -1
 
-        rate = rospy.Rate(30)
+        rate = rospy.Rate(10)
         while not rospy.is_shutdown():
 
             if self.is_status == True:
@@ -42,24 +43,23 @@ class path_pub:
                 y = self.y
 
                 min_dis = float("inf")
-                current_waypoint = -1
                 for i, waypoint in enumerate(self.global_path_msg.poses):
                     # 과거 웨이포인트와 인덱스 차이가 임계값 이내인 경우
-                    if i - current_waypoint <= self.threshold and i - current_waypoint > 0:
+                    if 0 <= i - self.current_waypoint <= self.threshold:
                         distance = sqrt(
                             pow(x - waypoint.pose.position.x, 2)
                             + pow(y - waypoint.pose.position.y, 2)
                         )
                         if distance < min_dis:
                             min_dis = distance
-                            current_waypoint = i
+                            self.current_waypoint = i
 
-                if current_waypoint != -1:
-                    if current_waypoint + self.local_path_size < len(
+                if self.current_waypoint != -1:
+                    if self.current_waypoint + self.local_path_size < len(
                         self.global_path_msg.poses
                     ):
                         for num in range(
-                            current_waypoint, current_waypoint + self.local_path_size
+                            self.current_waypoint, self.current_waypoint + self.local_path_size
                         ):
                             tmp_pose = PoseStamped()
                             tmp_pose.pose.position.x = self.global_path_msg.poses[
@@ -73,7 +73,7 @@ class path_pub:
 
                     else:
                         for num in range(
-                            current_waypoint, len(self.global_path_msg.poses)
+                            self.current_waypoint, len(self.global_path_msg.poses)
                         ):
                             tmp_pose = PoseStamped()
                             tmp_pose.pose.position.x = self.global_path_msg.poses[
@@ -86,7 +86,6 @@ class path_pub:
                             local_path_msg.poses.append(tmp_pose)
 
                 self.local_path_pub.publish(local_path_msg)
-
             rate.sleep()
 
     def status_callback(self, msg):
