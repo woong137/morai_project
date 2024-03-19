@@ -49,14 +49,14 @@ class stanley:
         self.is_global_path = False
         self.switcher = "driving"
         self.current_position = Point()
-        self.end_position = Point(166.0, -104.2, 0.0)
+        self.end_position = Point(166.5, -104.2, 0.0)
         self.stop_initiation_distance = 80
         self.switch_stop_initiation_tolerance = 0.5
         self.prev_steering = 0.0
 
         self.wheel_base = 2.7
         self.stanley_gain = 1.0
-        self.target_velocity = 50  # km/h
+        self.target_velocity = 100  # km/h
         self.window_size = 50
         rate = rospy.Rate(50)
 
