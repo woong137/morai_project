@@ -14,6 +14,7 @@ import numpy as np
 import tf
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
 
+
 # reference paper: http://robots.stanford.edu/papers/thrun.stanley05.pdf
 # longlCmdType 1(Throttle control) 이용합니다.
 
@@ -34,8 +35,9 @@ class stanley:
 
         # (1) subscriber, publisher 선언
         rospy.Subscriber("/global_path", Path, self.global_path_callback)
-        rospy.Subscriber("/lattice_path", Path, self.path_callback)
+        rospy.Subscriber("/local_path", Path, self.path_callback)
         rospy.Subscriber("/Ego_topic", EgoVehicleStatus, self.status_callback)
+        rospy.wait_for_service('/Service_MoraiEventCmd')
 
         self.ctrl_cmd_pub = rospy.Publisher(
             "ctrl_cmd_0", CtrlCmd, queue_size=1)
@@ -45,15 +47,20 @@ class stanley:
         self.is_path = False
         self.is_status = False
         self.is_global_path = False
+        self.switcher = "driving"
         self.current_position = Point()
+        self.end_position = Point(166.0, -104.2, 0.0)
+        self.stop_initiation_distance = 80
 
         self.wheel_base = 2.7
         self.stanley_gain = 0.5
-        self.target_velocity = 20
+        self.target_velocity = 30
         self.window_size = 20
-        rate = rospy.Rate(30)
+        rate = rospy.Rate(50)
 
-        self.pid = pidControl()
+        self.vel_pid = pidControl()
+        self.pos_pid = pidControl(10, 0.0, 0.0)
+
         self.vel_planning = velocityPlanning(self.target_velocity / 3.6, 0.15)
         while True:
             if self.is_global_path == True:
@@ -65,14 +72,12 @@ class stanley:
                 print("--------------------------")
                 print("Waiting global path data")
                 self.ctrl_cmd_msg.accel = 0.0
-                self.ctrl_cmd_msg.brake = -1.0
+                self.ctrl_cmd_msg.brake = 1.0
                 self.ctrl_cmd_pub.publish(self.ctrl_cmd_msg)
             rospy.sleep(0.5)
 
         while not rospy.is_shutdown():
-
             if self.is_path == True and self.is_global_path == True and self.is_status == True:
-
                 front_wheel_position = Point()
                 front_wheel_position.x = (
                     self.current_position.x +
@@ -82,42 +87,59 @@ class stanley:
                     self.current_position.y +
                     self.wheel_base * sin(self.vehicle_yaw)
                 )
-
                 self.current_waypoint = self.get_current_waypoint(
                     self.status_msg, self.global_path
                 )
                 self.target_velocity = self.velocitB_list[self.current_waypoint] * 3.6
-                # TODO: 가까운 점이 확인 안 될 때 어떻게 할 것인지
                 steering = self.calc_stanley(front_wheel_position)
                 self.ctrl_cmd_msg.steering = steering
+                print("switcher: ", self.switcher)
 
-                output = self.pid.pid(
-                    self.target_velocity, self.status_msg.velocity.x * 3.6
-                )
+                if self.switcher == "driving":
+                    acc_input = self.vel_pid.pid(
+                        self.target_velocity, self.status_msg.velocity.x * 3.6
+                    )
 
-                if output > 0.0:
-                    self.ctrl_cmd_msg.accel = output
-                    self.ctrl_cmd_msg.brake = 0.0
+                    if acc_input > 0.0:
+                        self.ctrl_cmd_msg.accel = acc_input
+                        self.ctrl_cmd_msg.brake = 0.0
+                    else:
+                        self.ctrl_cmd_msg.accel = 0.0
+                        self.ctrl_cmd_msg.brake = -acc_input
+
+                    # (8) 제어입력 메세지 Publish
+                    # print("--------------------------")
+                    print(
+                        "current position: (",
+                        round(self.current_position.x, 2),
+                        ",",
+                        round(self.current_position.y, 2),
+                        ")",
+                    )
+                    print("local_path length: ", len(self.path.poses))
+                    # print("target velocity: ", round(self.target_velocity, 2))
+                    # print("current velocity: ", round(
+                    #     self.status_msg.velocity.x * 3.6, 2))
+                    # print("accel: ", round(self.ctrl_cmd_msg.accel, 2))
+                    # print("steering: ", round(steering, 2))
+                    # print("duration time: ", round(current_time - prev_time, 2))
+                    if self.end_position.x - self.stop_initiation_distance - 0.5 < self.current_position.x < self.end_position.x + 0.5 \
+                            and self.stop_initiation_distance - 0.5 < self.current_position.y < self.stop_initiation_distance + 0.5:
+                        self.switcher = "stop"
+
+                elif self.switcher == "stop":
+                    # TODO: 거리에 대해 P 제어를 통해 정지
+                    self.ctrl_cmd_msg.longlCmdType = 2
+                    vel_input = self.vel_pid.pid(
+                        self.end_position.x, self.current_position.x)
+                    self.ctr_cmd_msg.velocity = vel_input
+
                 else:
-                    self.ctrl_cmd_msg.accel = 0.0
-                    self.ctrl_cmd_msg.brake = -output
+                    print("switcher error")
+                    break
 
-                # (8) 제어입력 메세지 Publish
-                print("--------------------------")
-                print(
-                    "current position: (",
-                    round(self.current_position.x, 2),
-                    ",",
-                    round(self.current_position.y, 2),
-                    ")",
-                )
-                # print("target velocity: ", round(self.target_velocity, 2))
-                # print("current velocity: ", round(
-                #     self.status_msg.velocity.x * 3.6, 2))
-                # print("accel: ", round(self.ctrl_cmd_msg.accel, 2))
-                # print("steering: ", round(steering, 2))
-                # print("duration time: ", round(current_time - prev_time, 2))
                 self.ctrl_cmd_pub.publish(self.ctrl_cmd_msg)
+            print("--------------------------")
 
             rate.sleep()
 
@@ -167,12 +189,19 @@ class stanley:
         # (3) 좌표 변환 행렬 생성 및 변환
         num = 1
         while True:
+            print("pose length: ", len(self.path.poses))
+            print("num: ", num, ",", "nearest_point_num: ",
+                  self.nearest_point_num)
+            print("nearest_point: (", round(self.nearest_point.x, 2), ",", round(
+                self.nearest_point.y, 2), ")")
+            # TODO: self.path.poses 리스트에서 인덱스가 범위를 벗어나는 경우 처리
             dx = self.path.poses[self.nearest_point_num +
                                  num].pose.position.x - self.nearest_point.x
             dy = self.path.poses[self.nearest_point_num +
                                  num].pose.position.y - self.nearest_point.y
             distance = sqrt(pow(dx, 2) + pow(dy, 2))
             num += 1
+            print("distance: ", distance)
             if distance > 0.01:
                 break
         path_yaw = atan2(dy, dx)
@@ -188,6 +217,8 @@ class stanley:
         det_trans_matrix = np.linalg.inv(trans_matrix)
         global_path_point = [self.nearest_point.x, self.nearest_point.y, 1]
         local_path_point = det_trans_matrix.dot(global_path_point)
+        print("global_path_point: (", round(
+            global_path_point[0], 2), ",", round(global_path_point[1], 2), ")")
 
         # (4) Steering 각도 계산
         psi = path_yaw - self.vehicle_yaw
@@ -199,16 +230,16 @@ class stanley:
 
 
 class pidControl:
-    def __init__(self):
-        self.p_gain = 0.3
-        self.i_gain = 0.00
-        self.d_gain = 0.03
+    def __init__(self, p_gain=0.3, i_gain=0.00, d_gain=0.03):
+        self.p_gain = p_gain
+        self.i_gain = i_gain
+        self.d_gain = d_gain
         self.prev_error = 0
         self.i_control = 0
         self.controlTime = 0.02
 
-    def pid(self, target_vel, current_vel):
-        error = target_vel - current_vel
+    def pid(self, target, current):
+        error = target - current
 
         # (5) PID 제어 생성
         p_control = self.p_gain * error
@@ -222,9 +253,9 @@ class pidControl:
 
 
 class velocityPlanning:
-    def __init__(self, car_max_speed, road_friciton):
+    def __init__(self, car_max_speed, road_friction):
         self.car_max_speed = car_max_speed
-        self.road_friction = road_friciton
+        self.road_friction = road_friction
 
     def curvedBaseVelocity(self, global_path, point_num):
         out_vel_plan = []
