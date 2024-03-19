@@ -95,7 +95,6 @@ class stanley:
                 self.target_velocity = self.velocitB_list[self.current_waypoint] * 3.6
                 steering = self.calc_stanley(front_wheel_position)
                 self.ctrl_cmd_msg.steering = steering
-                # print("switcher: ", self.switcher)
 
                 if self.switcher == "driving":
                     acc_input = self.vel_pid.pid(
@@ -118,9 +117,9 @@ class stanley:
                         round(self.current_position.y, 2),
                         ")",
                     )
-                    # print("target velocity: ", round(self.target_velocity, 2))
-                    # print("current velocity: ", round(
-                    #     self.status_msg.velocity.x * 3.6, 2))
+                    print("target velocity: ", round(self.target_velocity, 2))
+                    print("current velocity: ", round(
+                        self.status_msg.velocity.x * 3.6, 2))
                     # print("accel: ", round(self.ctrl_cmd_msg.accel, 2))
                     print("steering: ", round(steering, 2))
                     dis = self.stop_initiation_distance
@@ -132,7 +131,7 @@ class stanley:
                 elif self.switcher == "stop":
                     # TODO: 거리에 대해 P 제어를 통해 정지
                     self.ctrl_cmd_msg.longlCmdType = 2
-                    vel_input = self.vel_pid.pid(
+                    vel_input = self.pos_pid.pid(
                         self.end_position.x, self.current_position.x)
                     self.ctrl_cmd_msg.velocity = vel_input
 
@@ -192,8 +191,8 @@ class stanley:
         # (3) 좌표 변환 행렬 생성 및 변환
         num = 1
         while True:
-            print("nearest_point: (", round(nearest_point.x, 2), ",", round(
-                nearest_point.y, 2), ")")
+            # print("nearest_point: (", round(nearest_point.x, 2), ",", round(
+            #     nearest_point.y, 2), ")")
             dx = self.path.poses[nearest_point_num +
                                  num].pose.position.x - nearest_point.x
             dy = self.path.poses[nearest_point_num +
@@ -202,7 +201,6 @@ class stanley:
             num += 1
             if distance > 0.01:
                 break
-            print("distance: ", distance)
 
         path_yaw = atan2(dy, dx)
 
@@ -224,10 +222,10 @@ class stanley:
         steering = psi + atan2(
             self.stanley_gain * local_path_point[1], self.status_msg.velocity.x
         )
-        print("path_yaw: ", path_yaw)
-        print("vehicle_yaw: ", self.vehicle_yaw)
-        print("psi: ", psi)
-        print("x: ", local_path_point[1])
+        # print("path_yaw: ", path_yaw)
+        # print("vehicle_yaw: ", self.vehicle_yaw)
+        # print("psi: ", psi)
+        # print("x: ", local_path_point[1])
 
         return steering
 
@@ -297,11 +295,9 @@ class velocityPlanning:
                 v_max = self.car_max_speed
             out_vel_plan.append(v_max)
 
-        for i in range(len(global_path.poses) - point_num, len(global_path.poses) - 10):
-            out_vel_plan.append(30)
+        for i in range(len(global_path.poses) - point_num, len(global_path.poses)):
+            out_vel_plan.append(v_max)
 
-        for i in range(len(global_path.poses) - 10, len(global_path.poses)):
-            out_vel_plan.append(0)
         print("out_vel_plan: ", out_vel_plan)
 
         return out_vel_plan
