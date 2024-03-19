@@ -52,15 +52,16 @@ class stanley:
         self.end_position = Point(166.0, -104.2, 0.0)
         self.stop_initiation_distance = 80
         self.switch_stop_initiation_tolerance = 0.5
+        self.prev_steering = 0.0
 
         self.wheel_base = 2.7
         self.stanley_gain = 1.0
-        self.target_velocity = 30  # km/h
-        self.window_size = 20
+        self.target_velocity = 50  # km/h
+        self.window_size = 50
         rate = rospy.Rate(50)
 
         self.vel_pid = pidControl(0.3, 0.0, 0.03)
-        self.pos_pid = pidControl(1, 0.0, 0.0)
+        self.pos_pid = pidControl(0.5, 0.0, 0.0)
 
         self.vel_planning = velocityPlanning(self.target_velocity / 3.6, 0.15)
         while True:
@@ -146,11 +147,9 @@ class stanley:
                 elif self.switcher == "arrived":
                     self.ctrl_cmd_msg.longlCmdType = 2
                     self.ctrl_cmd_msg.velocity = 0.0
-                    print("arrived")
                     print("##############")
                     print("#Goal Reached#")
                     print("##############")
-                    break
 
                 else:
                     print("switcher error")
@@ -188,7 +187,28 @@ class stanley:
                 min_dist = dist
                 current_waypoint = i
         return current_waypoint
-    # TODO: path와 차 사이의 거리 구하는 공식 다시 확인하기
+
+    def distance_with_point_and_line(self, point1, point2, ego_point):
+        # 분자 계산: 점 P에서 직선 AB까지의 거리 공식
+        numerator = (point2.x - point1.x) * (point1.y - ego_point.y) - \
+            (point1.x - ego_point.x) * (point2.y - point1.y)
+        # 분모 계산: 직선 AB의 길이
+        denominator = np.sqrt((point2.x - point1.x) ** 2 +
+                              (point2.y - point1.y) ** 2)
+        # 거리 계산
+        distance = numerator / denominator
+
+        # 외적을 사용하여 P가 직선 AB의 왼쪽에 있는지 오른쪽에 있는지 판단
+        # cross_product = (point2.x - point1.x) * (ego_point.y - point1.y) - \
+        #     (ego_point.x - point1.x) * (point2.y - point1.y)
+
+        # # 외적의 부호에 따라 거리의 부호 결정
+        # if cross_product > 0:
+        #     # P가 AB의 왼쪽에 있으면 양수
+        #     return distance
+        # else:
+        #     # P가 AB의 오른쪽에 있으면 음수
+        return distance
 
     def calc_stanley(self, front_wheel_position):
         # (2) 차량의 앞바퀴 중심점과 경로 사이의 가장 가까운 점 찾기
@@ -205,12 +225,13 @@ class stanley:
 
         translation = [front_wheel_position.x, front_wheel_position.y]
 
-        # (3) 좌표 변환 행렬 생성 및 변환
         num = 1
         while True:
             # print("nearest_point: (", round(nearest_point.x, 2), ",", round(
             #     nearest_point.y, 2), ")")
-            if nearest_point_num + num < len(self.path.poses):
+            if nearest_point_num + num >= len(self.path.poses):
+                return self.prev_steering
+            else:
                 dx = self.path.poses[nearest_point_num +
                                      num].pose.position.x - nearest_point.x
                 dy = self.path.poses[nearest_point_num +
@@ -219,9 +240,6 @@ class stanley:
                 num += 1
                 if distance > 0.01:
                     break
-            else:
-                steering = 0
-                return steering
 
         path_yaw = atan2(dy, dx)
 
@@ -236,6 +254,12 @@ class stanley:
         det_trans_matrix = np.linalg.inv(trans_matrix)
         global_path_point = [nearest_point.x, nearest_point.y, 1]
         local_path_point = det_trans_matrix.dot(global_path_point)
+        # distance_with_point_and_line = self.distance_with_point_and_line(
+        #     self.path.poses[nearest_point_num].pose.position,
+        #     self.path.poses[nearest_point_num + num].pose.position,
+        #     front_wheel_position
+        # )
+        # print("distance_with_point_and_line: ", distance_with_point_and_line)
 
         # (4) Steering 각도 계산
         psi = path_yaw - self.vehicle_yaw
@@ -243,10 +267,11 @@ class stanley:
         steering = psi + atan2(
             self.stanley_gain * local_path_point[1], self.status_msg.velocity.x
         )
-        # print("path_yaw: ", path_yaw)
-        # print("vehicle_yaw: ", self.vehicle_yaw)
-        # print("psi: ", psi)
-        # print("x: ", local_path_point[1])
+        print("path_yaw: ", path_yaw)
+        print("vehicle_yaw: ", self.vehicle_yaw)
+        print("psi: ", psi)
+        print("local_path_point[1]: ", local_path_point[1])
+        self.prev_steering = steering
 
         return steering
 
