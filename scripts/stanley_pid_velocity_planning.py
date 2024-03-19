@@ -260,7 +260,7 @@ class velocityPlanning:
 
     def curvedBaseVelocity(self, global_path, point_num):
         out_vel_plan = []
-
+        # TODO: point_num보다 거리를 기준으로 하는 것이 더 좋을 수도 있음
         for i in range(0, point_num):
             out_vel_plan.append(self.car_max_speed)
 
@@ -286,10 +286,8 @@ class velocityPlanning:
 
             # (7) 곡률 기반 속도 계획
             # TODO: 회전할 때 r값이 얼마나 나오는지 출력해보기
-            if r > 50:
-                v_max = self.car_max_speed
-            else:
-                v_max = sqrt(r * 9.8 * self.road_friction)
+            print('r: ', r)
+            v_max = sqrt(r * 9.8 * self.road_friction)
 
             if v_max > self.car_max_speed:
                 v_max = self.car_max_speed
