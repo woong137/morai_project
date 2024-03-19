@@ -51,9 +51,10 @@ class stanley:
         self.current_position = Point()
         self.end_position = Point(166.0, -104.2, 0.0)
         self.stop_initiation_distance = 80
+        self.switch_stop_initiation_tolerance = 0.5
 
         self.wheel_base = 2.7
-        self.stanley_gain = 0.5
+        self.stanley_gain = 1.0
         self.target_velocity = 30
         self.window_size = 20
         rate = rospy.Rate(50)
@@ -78,6 +79,7 @@ class stanley:
 
         while not rospy.is_shutdown():
             if self.is_path == True and self.is_global_path == True and self.is_status == True:
+                print("switcher: ", self.switcher)
                 front_wheel_position = Point()
                 front_wheel_position.x = (
                     self.current_position.x +
@@ -121,8 +123,10 @@ class stanley:
                     #     self.status_msg.velocity.x * 3.6, 2))
                     # print("accel: ", round(self.ctrl_cmd_msg.accel, 2))
                     print("steering: ", round(steering, 2))
-                    if self.end_position.x - self.stop_initiation_distance - 0.5 < self.current_position.x < self.end_position.x + 0.5 \
-                            and self.stop_initiation_distance - 0.5 < self.current_position.y < self.stop_initiation_distance + 0.5:
+                    dis = self.stop_initiation_distance
+                    tol = self.switch_stop_initiation_tolerance
+                    if self.end_position.x - dis - tol < self.current_position.x < self.end_position.x - dis + tol \
+                            and self.end_position.y - tol < self.current_position.y < self.end_position.y + tol:
                         self.switcher = "stop"
 
                 elif self.switcher == "stop":
@@ -168,7 +172,8 @@ class stanley:
                 min_dist = dist
                 current_waypoint = i
         return current_waypoint
-    #TODO: path와 차 사이의 거리 구하는 공식 다시 확인하기
+    # TODO: path와 차 사이의 거리 구하는 공식 다시 확인하기
+
     def calc_stanley(self, front_wheel_position):
         # (2) 차량의 앞바퀴 중심점과 경로 사이의 가장 가까운 점 찾기
         min_dist = float("inf")
@@ -190,9 +195,9 @@ class stanley:
             print("nearest_point: (", round(nearest_point.x, 2), ",", round(
                 nearest_point.y, 2), ")")
             dx = self.path.poses[nearest_point_num +
-                                num].pose.position.x - nearest_point.x
+                                 num].pose.position.x - nearest_point.x
             dy = self.path.poses[nearest_point_num +
-                                num].pose.position.y - nearest_point.y
+                                 num].pose.position.y - nearest_point.y
             distance = sqrt(pow(dx, 2) + pow(dy, 2))
             num += 1
             if distance > 0.01:
