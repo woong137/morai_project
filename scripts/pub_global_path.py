@@ -59,7 +59,7 @@ class dijkstra_path_pub:
                     start_node, end_node = waypoints[i], waypoints[i+1]
                     result, path = self.global_planner.find_shortest_path(
                         start_node, end_node)
-
+                    pv_x, pv_y = 0, 0
                     for waypoint in path["point_path"]:
                         path_x = waypoint[0]
                         path_y = waypoint[1]
@@ -77,6 +77,10 @@ class dijkstra_path_pub:
             self.global_path_pub.publish(self.global_path_msg)
 
             rate.sleep()
+
+    def cal_distance(x1, y1, x2, y2):
+        dist = sqrt((x1-x2)**2 + (y1-y2)**2)
+        return dist
 
 
 class Dijkstra:
