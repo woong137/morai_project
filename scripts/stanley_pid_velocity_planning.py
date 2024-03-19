@@ -93,7 +93,7 @@ class stanley:
                 self.target_velocity = self.velocitB_list[self.current_waypoint] * 3.6
                 steering = self.calc_stanley(front_wheel_position)
                 self.ctrl_cmd_msg.steering = steering
-                print("switcher: ", self.switcher)
+                # print("switcher: ", self.switcher)
 
                 if self.switcher == "driving":
                     acc_input = self.vel_pid.pid(
@@ -116,13 +116,11 @@ class stanley:
                         round(self.current_position.y, 2),
                         ")",
                     )
-                    print("local_path length: ", len(self.path.poses))
                     # print("target velocity: ", round(self.target_velocity, 2))
                     # print("current velocity: ", round(
                     #     self.status_msg.velocity.x * 3.6, 2))
                     # print("accel: ", round(self.ctrl_cmd_msg.accel, 2))
-                    # print("steering: ", round(steering, 2))
-                    # print("duration time: ", round(current_time - prev_time, 2))
+                    print("steering: ", round(steering, 2))
                     if self.end_position.x - self.stop_initiation_distance - 0.5 < self.current_position.x < self.end_position.x + 0.5 \
                             and self.stop_initiation_distance - 0.5 < self.current_position.y < self.stop_initiation_distance + 0.5:
                         self.switcher = "stop"
@@ -132,7 +130,7 @@ class stanley:
                     self.ctrl_cmd_msg.longlCmdType = 2
                     vel_input = self.vel_pid.pid(
                         self.end_position.x, self.current_position.x)
-                    self.ctr_cmd_msg.velocity = vel_input
+                    self.ctrl_cmd_msg.velocity = vel_input
 
                 else:
                     print("switcher error")
@@ -170,7 +168,7 @@ class stanley:
                 min_dist = dist
                 current_waypoint = i
         return current_waypoint
-
+    #TODO: path와 차 사이의 거리 구하는 공식 다시 확인하기
     def calc_stanley(self, front_wheel_position):
         # (2) 차량의 앞바퀴 중심점과 경로 사이의 가장 가까운 점 찾기
         min_dist = float("inf")
@@ -181,29 +179,26 @@ class stanley:
             dist = sqrt(pow(dx, 2) + pow(dy, 2))
             if min_dist > dist:
                 min_dist = dist
-                self.nearest_point = path_point
-                self.nearest_point_num = num
+                nearest_point = path_point
+                nearest_point_num = num
 
         translation = [front_wheel_position.x, front_wheel_position.y]
 
         # (3) 좌표 변환 행렬 생성 및 변환
         num = 1
         while True:
-            print("pose length: ", len(self.path.poses))
-            print("num: ", num, ",", "nearest_point_num: ",
-                  self.nearest_point_num)
-            print("nearest_point: (", round(self.nearest_point.x, 2), ",", round(
-                self.nearest_point.y, 2), ")")
-            # TODO: self.path.poses 리스트에서 인덱스가 범위를 벗어나는 경우 처리
-            dx = self.path.poses[self.nearest_point_num +
-                                 num].pose.position.x - self.nearest_point.x
-            dy = self.path.poses[self.nearest_point_num +
-                                 num].pose.position.y - self.nearest_point.y
+            print("nearest_point: (", round(nearest_point.x, 2), ",", round(
+                nearest_point.y, 2), ")")
+            dx = self.path.poses[nearest_point_num +
+                                num].pose.position.x - nearest_point.x
+            dy = self.path.poses[nearest_point_num +
+                                num].pose.position.y - nearest_point.y
             distance = sqrt(pow(dx, 2) + pow(dy, 2))
             num += 1
-            print("distance: ", distance)
             if distance > 0.01:
                 break
+            print("distance: ", distance)
+
         path_yaw = atan2(dy, dx)
 
         trans_matrix = np.array(
@@ -215,16 +210,19 @@ class stanley:
         )
 
         det_trans_matrix = np.linalg.inv(trans_matrix)
-        global_path_point = [self.nearest_point.x, self.nearest_point.y, 1]
+        global_path_point = [nearest_point.x, nearest_point.y, 1]
         local_path_point = det_trans_matrix.dot(global_path_point)
-        print("global_path_point: (", round(
-            global_path_point[0], 2), ",", round(global_path_point[1], 2), ")")
 
         # (4) Steering 각도 계산
         psi = path_yaw - self.vehicle_yaw
+        psi = atan2(sin(psi), cos(psi))
         steering = psi + atan2(
             self.stanley_gain * local_path_point[1], self.status_msg.velocity.x
         )
+        print("path_yaw: ", path_yaw)
+        print("vehicle_yaw: ", self.vehicle_yaw)
+        print("psi: ", psi)
+        print("x: ", local_path_point[1])
 
         return steering
 
