@@ -55,7 +55,7 @@ class stanley:
 
         self.wheel_base = 2.7
         self.stanley_gain = 1.0
-        self.target_velocity = 30 # km/h
+        self.target_velocity = 30  # km/h
         self.window_size = 20
         rate = rospy.Rate(50)
 
@@ -137,14 +137,19 @@ class stanley:
                         vel_input = self.target_velocity
                     self.ctrl_cmd_msg.velocity = vel_input
 
-                    arrived_tol = 0.1
-                    if self.current_position.x - self.end_position.x < arrived_tol:
+                    arrived_tol = 0.3
+                    distance = sqrt(pow(self.current_position.x - self.end_position.x, 2) +
+                                    pow(self.current_position.y - self.end_position.y, 2))
+                    if distance < arrived_tol:
                         self.switcher = "arrived"
 
                 elif self.switcher == "arrived":
                     self.ctrl_cmd_msg.longlCmdType = 2
                     self.ctrl_cmd_msg.velocity = 0.0
                     print("arrived")
+                    print("##############")
+                    print("#Goal Reached#")
+                    print("##############")
                     break
 
                 else:
@@ -207,9 +212,9 @@ class stanley:
             #     nearest_point.y, 2), ")")
             if nearest_point_num + num < len(self.path.poses):
                 dx = self.path.poses[nearest_point_num +
-                                    num].pose.position.x - nearest_point.x
+                                     num].pose.position.x - nearest_point.x
                 dy = self.path.poses[nearest_point_num +
-                                    num].pose.position.y - nearest_point.y
+                                     num].pose.position.y - nearest_point.y
                 distance = sqrt(pow(dx, 2) + pow(dy, 2))
                 num += 1
                 if distance > 0.01:
