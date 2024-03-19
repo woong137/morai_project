@@ -49,23 +49,29 @@ class dijkstra_path_pub:
 
         rate = rospy.Rate(60)
 
+        self.global_path_is_calculated = False
+
         while not rospy.is_shutdown():
             # Making global path
-            for i in range(len(waypoints)-1):
-                start_node, end_node = waypoints[i], waypoints[i+1]
-                result, path = self.global_planner.find_shortest_path(
-                    start_node, end_node)
+            if not self.global_path_is_calculated:
+                for i in range(len(waypoints)-1):
 
-                for waypoint in path["point_path"]:
-                    path_x = waypoint[0]
-                    path_y = waypoint[1]
-                    # print(path_x, path_y)
-                    read_pose = PoseStamped()
-                    read_pose.pose.position.x = path_x
-                    read_pose.pose.position.y = path_y
-                    read_pose.pose.orientation.w = 1
-                    # print(read_pose)
-                    self.global_path_msg.poses.append(read_pose)
+                    start_node, end_node = waypoints[i], waypoints[i+1]
+                    result, path = self.global_planner.find_shortest_path(
+                        start_node, end_node)
+
+                    for waypoint in path["point_path"]:
+                        path_x = waypoint[0]
+                        path_y = waypoint[1]
+                        # print(path_x, path_y)
+                        read_pose = PoseStamped()
+                        read_pose.pose.position.x = path_x
+                        read_pose.pose.position.y = path_y
+                        read_pose.pose.orientation.w = 1
+                        # print(read_pose)
+                        self.global_path_msg.poses.append(read_pose)
+
+            self.global_path_is_calculated = True
 
             # print(self.global_path_msg)
             self.global_path_pub.publish(self.global_path_msg)
