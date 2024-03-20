@@ -4,7 +4,7 @@ stanley:
   switch_stop_initiation_tolerance: 0.5 # # stop case로 스위칭되는 위치로 인식되는 오차범위
   wheel_base: 2.7 # 앞바퀴와 뒷바퀴 사이의 거리(손대면 안됨)
   stanley_gain: 1.0 # stanley control gain(크면 핸들이 확확 꺾임)
-  target_velocity: 100 # km/h, 목표 속도
+  target_velocity: 30 # km/h, 목표 속도
   window_size: 50 # 속도 계획을 짤 때 몇 개의 point를 가지고 곡률을 계산할 것인가
   rate: 50 # Hz, stanley control 주기
 
@@ -21,6 +21,8 @@ pid_control:
 local_path:
   size: 50 # global path의 몇 개의 point를 가지고 local path를 생성할 것인가
   threshold: 10 # 현재 위치와 인덱스의 차이가 threshold보다 큰 포인트는 무시 (교차로에서 혼란 방지)
+  rate: 30 # Hz, stanley control 주기
 
 global_path:
   intermediate_point_distance: 1.0 # global path 간격이 클 때 몇 m 간격으로 포인트를 채울 것인가
+  rate: 1 # Hz, stanley control 주기

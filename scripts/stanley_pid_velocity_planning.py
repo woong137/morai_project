@@ -48,19 +48,38 @@ class stanley:
         self.is_global_path = False
         self.switcher = "driving"
         self.current_position = Point()
-        self.end_position = Point(166.5, -104.2, 0.0)
-        self.stop_initiation_distance = 80
-        self.switch_stop_initiation_tolerance = 0.5
-        self.prev_steering = 0.0
 
-        self.wheel_base = 2.7
-        self.stanley_gain = 1.0
-        self.target_velocity = 100  # km/h
-        self.window_size = 50
-        rate = rospy.Rate(50)
+        self.end_position = rospy.get_param(
+            '~stanley/end_position', [166.5, -104.2, 0.0])
+        self.stop_initiation_distance = rospy.get_param(
+            '~stanley/stop_initiation_distance', 80)
+        self.switch_stop_initiation_tolerance = rospy.get_param(
+            '~stanley/switch_stop_initiation_tolerance', 0.5)
+        self.wheel_base = rospy.get_param('~stanley/wheel_base', 2.7)
+        self.stanley_gain = rospy.get_param('~stanley/stanley_gain', 1.0)
+        self.target_velocity = rospy.get_param(
+            '~stanley/target_velocity', 100)  # km/h
+        self.window_size = rospy.get_param('~stanley/window_size', 50)
+        rate = rospy.Rate(rospy.get_param('~stanley/rate', 50))
 
-        self.vel_pid = pidControl(0.3, 0.0, 0.03)
-        self.pos_pid = pidControl(0.5, 0.0, 0.0)
+        velocity_pid_params = rospy.get_param('~pid_control/velocity')
+        position_pid_params = rospy.get_param('~pid_control/position')
+
+        self.vel_pid = pidControl(
+            velocity_pid_params['kp'], velocity_pid_params['ki'], velocity_pid_params['kd'])
+        self.pos_pid = pidControl(
+            position_pid_params['kp'], position_pid_params['ki'], position_pid_params['kd'])
+
+        # self.end_position = Point(166.5, -104.2, 0.0)
+        # self.stop_initiation_distance = 80
+        # self.switch_stop_initiation_tolerance = 0.5
+        # self.prev_steering = 0.0
+        # self.wheel_base = 2.7
+        # self.stanley_gain = 1.0
+        # self.target_velocity = 100  # km/h
+        # self.window_size = 50
+        # self.vel_pid = pidControl(0.3, 0.0, 0.03)
+        # self.pos_pid = pidControl(0.5, 0.0, 0.0)
 
         self.vel_planning = velocityPlanning(self.target_velocity / 3.6, 0.15)
         while True:
