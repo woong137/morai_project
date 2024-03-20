@@ -60,6 +60,8 @@ class stanley:
         self.target_velocity = rospy.get_param(
             'stanley/target_velocity', 100)  # km/h
         self.window_size = rospy.get_param('stanley/window_size', 50)
+        self.road_friction = rospy.get_param('stanley/road_friction', 0.15)
+
         rate = rospy.Rate(rospy.get_param('stanley/rate', 50))
 
         vel_kp = rospy.get_param('~pid_control/velocity/kp', 0.3)
@@ -72,7 +74,7 @@ class stanley:
         self.vel_pid = pidControl(vel_kp, vel_ki, vel_kd)
         self.pos_pid = pidControl(pos_kp, pos_ki, pos_kd)
 
-        self.vel_planning = velocityPlanning(self.target_velocity / 3.6, 0.15)
+        self.vel_planning = velocityPlanning(self.target_velocity / 3.6, self.road_friction)
         while True:
             if self.is_global_path == True:
                 self.velocitB_list = self.vel_planning.curvedBaseVelocity(
@@ -102,13 +104,18 @@ class stanley:
                 _, self.current_waypoint_num = self.get_current_point(
                     front_wheel_position, self.global_path
                 )
-                self.target_velocity = self.velocitB_list[self.current_waypoint_num] * 3.6
+                if self.current_waypoint_num < len(self.velocitB_list):
+                    target_velocity = self.velocitB_list[self.current_waypoint_num] * 3.6
+                else:
+                    target_velocity = 0
+                print("current_waypoint_num: ", self.current_waypoint_num,
+                      "/", len(self.velocitB_list) - 1)
                 steering = self.calc_stanley(front_wheel_position)
                 self.ctrl_cmd_msg.steering = steering
 
                 if self.switcher == "driving":
                     acc_input = self.vel_pid.pid(
-                        self.target_velocity, self.status_msg.velocity.x * 3.6
+                        target_velocity, self.status_msg.velocity.x * 3.6
                     )
 
                     if acc_input > 0.0:
@@ -127,10 +134,10 @@ class stanley:
                         round(self.current_position.y, 2),
                         ")",
                     )
-                    print("target velocity: ", round(self.target_velocity, 2))
+                    print("target velocity: ", round(target_velocity, 2))
                     print("current velocity: ", round(
                         self.status_msg.velocity.x * 3.6, 2))
-                    print("self.target_velocity: ", self.target_velocity)
+                    print("target_velocity: ", target_velocity)
                     # print("accel: ", round(self.ctrl_cmd_msg.accel, 2))
                     print("steering: ", round(steering, 2))
                     dis = self.stop_initiation_distance
@@ -300,24 +307,23 @@ class velocityPlanning:
 
     def curvedBaseVelocity(self, global_path, point_num):
         out_vel_plan = []
-        # TODO: point_num보다 거리를 기준으로 하는 것이 더 좋을 수도 있음
-        for i in range(0, point_num):
-            out_vel_plan.append(10.0/3.6)
+        # for i in range(0, point_num):
+        #     out_vel_plan.append(10.0/3.6)
 
-        for i in range(point_num, len(global_path.poses) - point_num):
+        for i in range(0, len(global_path.poses) - point_num):
             A_list = []
             B_list = []
 
             while True:
                 dx = global_path.poses[i + point_num].pose.position.x - \
-                    global_path.poses[i - point_num].pose.position.x
+                    global_path.poses[i].pose.position.x
                 dy = global_path.poses[i + point_num].pose.position.y - \
-                    global_path.poses[i - point_num].pose.position.y
+                    global_path.poses[i].pose.position.y
                 box_size = sqrt(dx * dx + dy * dy)
                 if box_size < self.max_box_size:
                     break
                 point_num -= 1
-            for box in range(-point_num, point_num):
+            for box in range(0, point_num):
                 x = global_path.poses[i + box].pose.position.x
                 y = global_path.poses[i + box].pose.position.y
                 A_list.append([-2 * x, -2 * y, 1])
