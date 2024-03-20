@@ -43,9 +43,11 @@ class path_pub:
                 y = self.y
 
                 min_dis = float("inf")
+
                 for i, waypoint in enumerate(self.global_path_msg.poses):
                     # 과거 웨이포인트와 인덱스 차이가 임계값 이내인 경우
                     if 0 <= i - self.current_waypoint <= self.threshold:
+
                         distance = sqrt(
                             pow(x - waypoint.pose.position.x, 2)
                             + pow(y - waypoint.pose.position.y, 2)

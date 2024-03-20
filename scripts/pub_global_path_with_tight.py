@@ -9,9 +9,8 @@ import os
 import copy
 import numpy as np
 import json
-import csv
 
-from math import cos, sin, sqrt, pow, atan2, pi
+from math import cos, sin, sqrt, pow, atan2, pi, floor
 from geometry_msgs.msg import Point32, PoseStamped, PoseWithCovarianceStamped
 from nav_msgs.msg import Odometry, Path
 
@@ -20,6 +19,7 @@ sys.path.append(current_path)
 
 
 class dijkstra_path_pub:
+
     def __init__(self):
         # Init Nodes
         rospy.init_node('dijkstra_path_pub', anonymous=True)
@@ -31,6 +31,7 @@ class dijkstra_path_pub:
         waypoints = ["154S", "3E", "121S", "32E", "68S", "75S", "73S",
                      "85S", "82S", "78S", "124S", "122S", "8E", "111E", "203S"]
         # waypoints = ["154S", "3E"]
+
         load_path = os.path.normpath(os.path.join(
             current_path, map_link))
 
@@ -48,39 +49,72 @@ class dijkstra_path_pub:
         self.global_path_msg = Path()
         self.global_path_msg.header.frame_id = '/map'
 
-        rate = rospy.Rate(60)
-        self.global_path_is_calculated = False
+        rate = rospy.Rate(1)
 
-        # make CSV
-        output_path = 'src/morai_project/scripts/global_path.csv'
+        self.global_path_is_calculated = False
 
         while not rospy.is_shutdown():
             # Making global path
             if not self.global_path_is_calculated:
-                with open(output_path, 'w', newline='', encoding='utf-8') as csv_file:
-                    writer = csv.writer(csv_file)
-                    writer.writerow(['x', 'y', 'z'])
+                for i in range(len(waypoints)-1):
 
-                    for i in range(len(waypoints)-1):
+                    start_node, end_node = waypoints[i], waypoints[i+1]
+                    result, path = self.global_planner.find_shortest_path(
+                        start_node, end_node)
+                    # set first x,y
+                    pv_x, pv_y = path["point_path"][0][0], path["point_path"][0][1]
 
-                        start_node, end_node = waypoints[i], waypoints[i+1]
-                        result, path = self.global_planner.find_shortest_path(
-                            start_node, end_node)
-                        # print(path["node_path"])
+                    for waypoint in path["point_path"]:
+                        path_x = waypoint[0]
+                        path_y = waypoint[1]
+                        #
+                        if ((self.cal_delta(pv_x, path_x) > 10)):
+                            read_pose = PoseStamped()
+                            read_pose.pose.position.x = path_x
+                            read_pose.pose.position.y = path_y
+                            read_pose.pose.orientation.w = 1
+                            delta_y = (path_y - pv_y) / \
+                                self.cal_delta(pv_x, path_x)
+                            # print("pv :", pv_x, pv_y)
+                            # print("path :", path_x, path_y)
+                            for i in range(0, floor(self.cal_delta(pv_x, path_x)), 10):
+                                if pv_x < path_x:
+                                    read_pose.pose.position.x = path_x - i
+                                else:
+                                    read_pose.pose.position.x = path_x + i
+                                read_pose.pose.position.y = path_y + i * delta_y
+                                print(read_pose.pose.position.x,
+                                      read_pose.pose.position.y)
+                                self.global_path_msg.poses.append(read_pose)
 
-                        # print(path["point_path"])
-
-                        for waypoint in path["point_path"]:
-                            path_x = waypoint[0]
-                            path_y = waypoint[1]
+                        elif ((self.cal_delta(pv_y, path_y) > 10)):
+                            read_pose = PoseStamped()
+                            read_pose.pose.position.x = path_x
+                            read_pose.pose.position.y = path_y
+                            read_pose.pose.orientation.w = 1
+                            delta_x = (path_x - pv_x) / \
+                                self.cal_delta(pv_y, path_y)
+                            # print("pv :", pv_x, pv_y)
+                            # print("path :", path_x, path_y)
+                            for i in range(0, floor(self.cal_delta(pv_y, path_y)), 10):
+                                if pv_y < path_y:
+                                    read_pose.pose.position.y = path_y - i
+                                else:
+                                    read_pose.pose.position.y = path_y + i
+                                read_pose.pose.position.x = path_x + i * delta_x
+                                print(read_pose.pose.position.x,
+                                      read_pose.pose.position.y)
+                                self.global_path_msg.poses.append(read_pose)
+                        else:
                             # print(path_x, path_y)
                             read_pose = PoseStamped()
                             read_pose.pose.position.x = path_x
                             read_pose.pose.position.y = path_y
                             read_pose.pose.orientation.w = 1
-                            writer.writerow([path_x, path_y, 0])
                             # print(read_pose)
                             self.global_path_msg.poses.append(read_pose)
+                        pv_x, pv_y = read_pose.pose.position.x, read_pose.pose.position.y
+                        print("last_loc: ", pv_x, pv_y)
 
             self.global_path_is_calculated = True
 
@@ -88,6 +122,14 @@ class dijkstra_path_pub:
             self.global_path_pub.publish(self.global_path_msg)
 
             rate.sleep()
+
+    def cal_distance(self, x1, y1, x2, y2):
+        dist = sqrt((x1-x2)**2 + (y1-y2)**2)
+        return dist
+
+    def cal_delta(self, x1, x2):
+        delta = abs(x1-x2)
+        return delta
 
 
 class Dijkstra:
@@ -186,15 +228,13 @@ class Dijkstra:
             shortest_link, min_cost = self.find_shortest_link_leading_to_node(
                 from_node, to_node)
             link_path.append(shortest_link.idx)
-        print(link_path)
+
         if len(link_path) == 0:
             return False, {'node_path': node_path, 'link_path': link_path, 'point_path': []}
 
         point_path = []
         for link_id in link_path:
-            print(link_id)
             link = self.links[link_id]
-            print(link.points)
             for point in link.points:
                 point_path.append([point[0], point[1], 0])
 

@@ -37,7 +37,6 @@ class stanley:
         rospy.Subscriber("/global_path", Path, self.global_path_callback)
         rospy.Subscriber("/local_path", Path, self.path_callback)
         rospy.Subscriber("/Ego_topic", EgoVehicleStatus, self.status_callback)
-        rospy.wait_for_service('/Service_MoraiEventCmd')
 
         self.ctrl_cmd_pub = rospy.Publisher(
             "ctrl_cmd_0", CtrlCmd, queue_size=1)
