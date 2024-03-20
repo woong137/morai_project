@@ -31,7 +31,6 @@ class dijkstra_path_pub:
         waypoints = ["154S", "3E", "121S", "32E", "68S", "75S", "73S",
                      "85S", "82S", "78S", "124S", "122S", "8E", "111E", "203S"]
         # waypoints = ["154S", "3E"]
-
         load_path = os.path.normpath(os.path.join(
             current_path, map_link))
 
@@ -67,9 +66,6 @@ class dijkstra_path_pub:
                         start_node, end_node = waypoints[i], waypoints[i+1]
                         result, path = self.global_planner.find_shortest_path(
                             start_node, end_node)
-                        print(start_node, end_node)
-                        print(path)
-
                         # print(path["node_path"])
 
                         # print(path["point_path"])
