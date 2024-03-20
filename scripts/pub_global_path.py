@@ -23,7 +23,7 @@ class dijkstra_path_pub:
         # Init Nodes
         rospy.init_node('dijkstra_path_pub', anonymous=True)
         self.global_path_pub = rospy.Publisher(
-            '/global_path_02', Path, queue_size=1)
+            '/global_path', Path, queue_size=1)
 
         map_link = 'lib/mgeo_data/R_KR_PR_SeongnamCityHall'
 
