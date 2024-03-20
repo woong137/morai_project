@@ -32,7 +32,6 @@ from tf.transformations import euler_from_quaternion, quaternion_from_euler
 class stanley:
     def __init__(self):
         rospy.init_node("stanley", anonymous=False)
-
         # (1) subscriber, publisher 선언
         rospy.Subscriber("/global_path", Path, self.global_path_callback)
         rospy.Subscriber("/local_path", Path, self.path_callback)
@@ -74,7 +73,9 @@ class stanley:
         self.vel_pid = pidControl(vel_kp, vel_ki, vel_kd)
         self.pos_pid = pidControl(pos_kp, pos_ki, pos_kd)
 
-        self.vel_planning = velocityPlanning(self.target_velocity / 3.6, self.road_friction)
+        self.vel_planning = velocityPlanning(
+            self.target_velocity / 3.6, self.road_friction)
+        self.start_time = time.time()
         while True:
             if self.is_global_path == True:
                 self.velocitB_list = self.vel_planning.curvedBaseVelocity(
@@ -87,7 +88,7 @@ class stanley:
                 self.ctrl_cmd_msg.accel = 0.0
                 self.ctrl_cmd_msg.brake = 1.0
                 self.ctrl_cmd_pub.publish(self.ctrl_cmd_msg)
-            rospy.sleep(0.5)
+            rospy.sleep(0.1)
 
         while not rospy.is_shutdown():
             if self.is_path == True and self.is_global_path == True and self.is_status == True:
@@ -108,8 +109,6 @@ class stanley:
                     target_velocity = self.velocitB_list[self.current_waypoint_num] * 3.6
                 else:
                     target_velocity = 0
-                print("current_waypoint_num: ", self.current_waypoint_num,
-                      "/", len(self.velocitB_list) - 1)
                 steering = self.calc_stanley(front_wheel_position)
                 self.ctrl_cmd_msg.steering = steering
 
@@ -137,7 +136,8 @@ class stanley:
                     print("target velocity: ", round(target_velocity, 2))
                     print("current velocity: ", round(
                         self.status_msg.velocity.x * 3.6, 2))
-                    print("target_velocity: ", target_velocity)
+                    print("velocity error: ", round(
+                        target_velocity - self.status_msg.velocity.x * 3.6, 2))
                     # print("accel: ", round(self.ctrl_cmd_msg.accel, 2))
                     print("steering: ", round(steering, 2))
                     dis = self.stop_initiation_distance
@@ -168,6 +168,8 @@ class stanley:
                     print("##############")
                     print("#Goal Reached#")
                     print("##############")
+                    end_time = time.time()
+                    print("Time: ", end_time - self.start_time)
                     break
 
                 else:
