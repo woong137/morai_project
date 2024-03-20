@@ -99,10 +99,10 @@ class stanley:
                     self.current_position.y +
                     self.wheel_base * sin(self.vehicle_yaw)
                 )
-                self.current_waypoint = self.get_current_waypoint(
+                _, self.current_waypoint_num = self.get_current_waypoint(
                     front_wheel_position, self.global_path
                 )
-                self.target_velocity = self.velocitB_list[self.current_waypoint] * 3.6
+                self.target_velocity = self.velocitB_list[self.current_waypoint_num] * 3.6
                 steering = self.calc_stanley(front_wheel_position)
                 self.ctrl_cmd_msg.steering = steering
 
@@ -187,17 +187,18 @@ class stanley:
         self.global_path = msg
         self.is_global_path = True
 
-    def get_current_waypoint(self, ego_point, global_path): # 현재 위치에서 global path상의 가장 가까운 점 찾기
+    def get_current_waypoint(self, ego_point, path): # 현재 위치에서 global path상의 가장 가까운 점 찾기
         min_dist = float("inf")
-        current_waypoint = -1
-        for i, pose in enumerate(global_path.poses):
+        current_waypoint_num = -1
+        for i, pose in enumerate(path.poses):
             dx = ego_point.x - pose.pose.position.x
             dy = ego_point.y - pose.pose.position.y
             dist = sqrt(pow(dx, 2) + pow(dy, 2))
             if min_dist > dist:
                 min_dist = dist
-                current_waypoint = i
-        return current_waypoint
+                current_waypoint = pose.pose.position
+                current_waypoint_num = i
+        return current_waypoint, current_waypoint_num
 
     def get_nearest_point(self, ego_point): # 현재 위치에서 local path상의 가장 가까운 점 찾기
         min_dist = float("inf")
@@ -227,7 +228,7 @@ class stanley:
 
     def calc_stanley(self, front_wheel_position):
         # (2) 차량의 앞바퀴 중심점과 경로 사이의 가장 가까운 점 찾기
-        nearest_point, nearest_point_num = self.get_nearest_point(front_wheel_position)
+        nearest_point, nearest_point_num = self.get_current_point(front_wheel_position, self.path)
         translation = [front_wheel_position.x, front_wheel_position.y]
 
         num = 1
