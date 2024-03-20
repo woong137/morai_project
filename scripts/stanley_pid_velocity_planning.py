@@ -100,7 +100,7 @@ class stanley:
                     self.wheel_base * sin(self.vehicle_yaw)
                 )
                 self.current_waypoint = self.get_current_waypoint(
-                    self.status_msg, self.global_path
+                    front_wheel_position, self.global_path
                 )
                 self.target_velocity = self.velocitB_list[self.current_waypoint] * 3.6
                 steering = self.calc_stanley(front_wheel_position)
@@ -187,18 +187,31 @@ class stanley:
         self.global_path = msg
         self.is_global_path = True
 
-    def get_current_waypoint(self, ego_status, global_path):
+    def get_current_waypoint(self, ego_point, global_path): # 현재 위치에서 global path상의 가장 가까운 점 찾기
         min_dist = float("inf")
         current_waypoint = -1
         for i, pose in enumerate(global_path.poses):
-            dx = ego_status.position.x - pose.pose.position.x
-            dy = ego_status.position.y - pose.pose.position.y
-
+            dx = ego_point.x - pose.pose.position.x
+            dy = ego_point.y - pose.pose.position.y
             dist = sqrt(pow(dx, 2) + pow(dy, 2))
             if min_dist > dist:
                 min_dist = dist
                 current_waypoint = i
         return current_waypoint
+
+    def get_nearest_point(self, ego_point): # 현재 위치에서 local path상의 가장 가까운 점 찾기
+        min_dist = float("inf")
+        for num, i in enumerate(self.path.poses):
+            path_point = i.pose.position
+            dx = ego_point.x - path_point.x
+            dy = ego_point.y - path_point.y
+            dist = sqrt(pow(dx, 2) + pow(dy, 2))
+            if min_dist > dist:
+                min_dist = dist
+                nearest_point = path_point
+                nearest_point_num = num
+        return nearest_point, nearest_point_num
+
 
     def distance_with_point_and_line(self, point1, point2, ego_point):
         # 분자 계산: 점 P에서 직선 AB까지의 거리 공식
@@ -214,17 +227,7 @@ class stanley:
 
     def calc_stanley(self, front_wheel_position):
         # (2) 차량의 앞바퀴 중심점과 경로 사이의 가장 가까운 점 찾기
-        min_dist = float("inf")
-        for num, i in enumerate(self.path.poses):
-            path_point = i.pose.position
-            dx = front_wheel_position.x - path_point.x
-            dy = front_wheel_position.y - path_point.y
-            dist = sqrt(pow(dx, 2) + pow(dy, 2))
-            if min_dist > dist:
-                min_dist = dist
-                nearest_point = path_point
-                nearest_point_num = num
-
+        nearest_point, nearest_point_num = self.get_nearest_point(front_wheel_position)
         translation = [front_wheel_position.x, front_wheel_position.y]
 
         num = 1
