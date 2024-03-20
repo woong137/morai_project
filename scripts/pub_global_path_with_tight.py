@@ -49,7 +49,7 @@ class dijkstra_path_pub:
         self.global_path_msg = Path()
         self.global_path_msg.header.frame_id = '/map'
 
-        rate = rospy.Rate(60)
+        rate = rospy.Rate(1)
 
         self.global_path_is_calculated = False
 
