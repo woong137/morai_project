@@ -14,6 +14,7 @@ import numpy as np
 import tf
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
 
+
 # reference paper: http://robots.stanford.edu/papers/thrun.stanley05.pdf
 # longlCmdType 1(Throttle control) 이용합니다.
 
@@ -34,8 +35,9 @@ class stanley:
 
         # (1) subscriber, publisher 선언
         rospy.Subscriber("/global_path", Path, self.global_path_callback)
-        rospy.Subscriber("/lattice_path", Path, self.path_callback)
+        rospy.Subscriber("/local_path", Path, self.path_callback)
         rospy.Subscriber("/Ego_topic", EgoVehicleStatus, self.status_callback)
+        rospy.wait_for_service('/Service_MoraiEventCmd')
 
         self.ctrl_cmd_pub = rospy.Publisher(
             "ctrl_cmd_0", CtrlCmd, queue_size=1)
@@ -45,15 +47,22 @@ class stanley:
         self.is_path = False
         self.is_status = False
         self.is_global_path = False
+        self.switcher = "driving"
         self.current_position = Point()
+        self.end_position = Point(166.5, -104.2, 0.0)
+        self.stop_initiation_distance = 80
+        self.switch_stop_initiation_tolerance = 0.5
+        self.prev_steering = 0.0
 
         self.wheel_base = 2.7
-        self.stanley_gain = 0.5
-        self.target_velocity = 20
-        self.window_size = 20
-        rate = rospy.Rate(30)
+        self.stanley_gain = 1.0
+        self.target_velocity = 30  # km/h
+        self.window_size = 50
+        rate = rospy.Rate(50)
 
-        self.pid = pidControl()
+        self.vel_pid = pidControl(0.3, 0.0, 0.03)
+        self.pos_pid = pidControl(0.5, 0.0, 0.0)
+
         self.vel_planning = velocityPlanning(self.target_velocity / 3.6, 0.15)
         while True:
             if self.is_global_path == True:
@@ -65,14 +74,13 @@ class stanley:
                 print("--------------------------")
                 print("Waiting global path data")
                 self.ctrl_cmd_msg.accel = 0.0
-                self.ctrl_cmd_msg.brake = -1.0
+                self.ctrl_cmd_msg.brake = 1.0
                 self.ctrl_cmd_pub.publish(self.ctrl_cmd_msg)
             rospy.sleep(0.5)
 
         while not rospy.is_shutdown():
-
             if self.is_path == True and self.is_global_path == True and self.is_status == True:
-
+                print("switcher: ", self.switcher)
                 front_wheel_position = Point()
                 front_wheel_position.x = (
                     self.current_position.x +
@@ -82,42 +90,73 @@ class stanley:
                     self.current_position.y +
                     self.wheel_base * sin(self.vehicle_yaw)
                 )
-
                 self.current_waypoint = self.get_current_waypoint(
                     self.status_msg, self.global_path
                 )
                 self.target_velocity = self.velocitB_list[self.current_waypoint] * 3.6
-                # TODO: 가까운 점이 확인 안 될 때 어떻게 할 것인지
                 steering = self.calc_stanley(front_wheel_position)
                 self.ctrl_cmd_msg.steering = steering
 
-                output = self.pid.pid(
-                    self.target_velocity, self.status_msg.velocity.x * 3.6
-                )
+                if self.switcher == "driving":
+                    acc_input = self.vel_pid.pid(
+                        self.target_velocity, self.status_msg.velocity.x * 3.6
+                    )
 
-                if output > 0.0:
-                    self.ctrl_cmd_msg.accel = output
-                    self.ctrl_cmd_msg.brake = 0.0
+                    if acc_input > 0.0:
+                        self.ctrl_cmd_msg.accel = acc_input
+                        self.ctrl_cmd_msg.brake = 0.0
+                    else:
+                        self.ctrl_cmd_msg.accel = 0.0
+                        self.ctrl_cmd_msg.brake = -acc_input
+
+                    # (8) 제어입력 메세지 Publish
+                    # print("--------------------------")
+                    print(
+                        "current position: (",
+                        round(self.current_position.x, 2),
+                        ",",
+                        round(self.current_position.y, 2),
+                        ")",
+                    )
+                    print("target velocity: ", round(self.target_velocity, 2))
+                    print("current velocity: ", round(
+                        self.status_msg.velocity.x * 3.6, 2))
+                    # print("accel: ", round(self.ctrl_cmd_msg.accel, 2))
+                    print("steering: ", round(steering, 2))
+                    dis = self.stop_initiation_distance
+                    tol = self.switch_stop_initiation_tolerance
+                    if self.end_position.x - dis - tol < self.current_position.x < self.end_position.x - dis + tol \
+                            and self.end_position.y - tol < self.current_position.y < self.end_position.y + tol:
+                        self.switcher = "stop"
+
+                elif self.switcher == "stop":
+                    self.ctrl_cmd_msg.longlCmdType = 2
+                    vel_input = self.pos_pid.pid(
+                        self.end_position.x, self.current_position.x)
+                    # vel_input vel_max로 제한
+                    if vel_input > self.target_velocity:
+                        vel_input = self.target_velocity
+                    self.ctrl_cmd_msg.velocity = vel_input
+
+                    arrived_tol = 0.3
+                    distance = sqrt(pow(self.current_position.x - self.end_position.x, 2) +
+                                    pow(self.current_position.y - self.end_position.y, 2))
+                    if distance < arrived_tol:
+                        self.switcher = "arrived"
+
+                elif self.switcher == "arrived":
+                    self.ctrl_cmd_msg.longlCmdType = 2
+                    self.ctrl_cmd_msg.velocity = 0.0
+                    print("##############")
+                    print("#Goal Reached#")
+                    print("##############")
+
                 else:
-                    self.ctrl_cmd_msg.accel = 0.0
-                    self.ctrl_cmd_msg.brake = -output
+                    print("switcher error")
+                    break
 
-                # (8) 제어입력 메세지 Publish
-                print("--------------------------")
-                print(
-                    "current position: (",
-                    round(self.current_position.x, 2),
-                    ",",
-                    round(self.current_position.y, 2),
-                    ")",
-                )
-                # print("target velocity: ", round(self.target_velocity, 2))
-                # print("current velocity: ", round(
-                #     self.status_msg.velocity.x * 3.6, 2))
-                # print("accel: ", round(self.ctrl_cmd_msg.accel, 2))
-                # print("steering: ", round(steering, 2))
-                # print("duration time: ", round(current_time - prev_time, 2))
                 self.ctrl_cmd_pub.publish(self.ctrl_cmd_msg)
+            print("--------------------------")
 
             rate.sleep()
 
@@ -149,6 +188,28 @@ class stanley:
                 current_waypoint = i
         return current_waypoint
 
+    def distance_with_point_and_line(self, point1, point2, ego_point):
+        # 분자 계산: 점 P에서 직선 AB까지의 거리 공식
+        numerator = (point2.x - point1.x) * (point1.y - ego_point.y) - \
+            (point1.x - ego_point.x) * (point2.y - point1.y)
+        # 분모 계산: 직선 AB의 길이
+        denominator = np.sqrt((point2.x - point1.x) ** 2 +
+                              (point2.y - point1.y) ** 2)
+        # 거리 계산
+        distance = numerator / denominator
+
+        # 외적을 사용하여 P가 직선 AB의 왼쪽에 있는지 오른쪽에 있는지 판단
+        # cross_product = (point2.x - point1.x) * (ego_point.y - point1.y) - \
+        #     (ego_point.x - point1.x) * (point2.y - point1.y)
+
+        # # 외적의 부호에 따라 거리의 부호 결정
+        # if cross_product > 0:
+        #     # P가 AB의 왼쪽에 있으면 양수
+        #     return distance
+        # else:
+        #     # P가 AB의 오른쪽에 있으면 음수
+        return distance
+
     def calc_stanley(self, front_wheel_position):
         # (2) 차량의 앞바퀴 중심점과 경로 사이의 가장 가까운 점 찾기
         min_dist = float("inf")
@@ -159,22 +220,27 @@ class stanley:
             dist = sqrt(pow(dx, 2) + pow(dy, 2))
             if min_dist > dist:
                 min_dist = dist
-                self.nearest_point = path_point
-                self.nearest_point_num = num
+                nearest_point = path_point
+                nearest_point_num = num
 
         translation = [front_wheel_position.x, front_wheel_position.y]
 
-        # (3) 좌표 변환 행렬 생성 및 변환
         num = 1
         while True:
-            dx = self.path.poses[self.nearest_point_num +
-                                 num].pose.position.x - self.nearest_point.x
-            dy = self.path.poses[self.nearest_point_num +
-                                 num].pose.position.y - self.nearest_point.y
-            distance = sqrt(pow(dx, 2) + pow(dy, 2))
-            num += 1
-            if distance > 0.01:
-                break
+            # print("nearest_point: (", round(nearest_point.x, 2), ",", round(
+            #     nearest_point.y, 2), ")")
+            if nearest_point_num + num >= len(self.path.poses):
+                return self.prev_steering
+            else:
+                dx = self.path.poses[nearest_point_num +
+                                     num].pose.position.x - nearest_point.x
+                dy = self.path.poses[nearest_point_num +
+                                     num].pose.position.y - nearest_point.y
+                distance = sqrt(pow(dx, 2) + pow(dy, 2))
+                num += 1
+                if distance > 0.01:
+                    break
+
         path_yaw = atan2(dy, dx)
 
         trans_matrix = np.array(
@@ -186,29 +252,41 @@ class stanley:
         )
 
         det_trans_matrix = np.linalg.inv(trans_matrix)
-        global_path_point = [self.nearest_point.x, self.nearest_point.y, 1]
+        global_path_point = [nearest_point.x, nearest_point.y, 1]
         local_path_point = det_trans_matrix.dot(global_path_point)
+        # distance_with_point_and_line = self.distance_with_point_and_line(
+        #     self.path.poses[nearest_point_num].pose.position,
+        #     self.path.poses[nearest_point_num + num].pose.position,
+        #     front_wheel_position
+        # )
+        # print("distance_with_point_and_line: ", distance_with_point_and_line)
 
         # (4) Steering 각도 계산
         psi = path_yaw - self.vehicle_yaw
+        psi = atan2(sin(psi), cos(psi))
         steering = psi + atan2(
             self.stanley_gain * local_path_point[1], self.status_msg.velocity.x
         )
+        print("path_yaw: ", path_yaw)
+        print("vehicle_yaw: ", self.vehicle_yaw)
+        print("psi: ", psi)
+        print("local_path_point[1]: ", local_path_point[1])
+        self.prev_steering = steering
 
         return steering
 
 
 class pidControl:
-    def __init__(self):
-        self.p_gain = 0.3
-        self.i_gain = 0.00
-        self.d_gain = 0.03
+    def __init__(self, p_gain=0.3, i_gain=0.00, d_gain=0.03):
+        self.p_gain = p_gain
+        self.i_gain = i_gain
+        self.d_gain = d_gain
         self.prev_error = 0
         self.i_control = 0
         self.controlTime = 0.02
 
-    def pid(self, target_vel, current_vel):
-        error = target_vel - current_vel
+    def pid(self, target, current):
+        error = target - current
 
         # (5) PID 제어 생성
         p_control = self.p_gain * error
@@ -222,13 +300,13 @@ class pidControl:
 
 
 class velocityPlanning:
-    def __init__(self, car_max_speed, road_friciton):
+    def __init__(self, car_max_speed, road_friction):
         self.car_max_speed = car_max_speed
-        self.road_friction = road_friciton
+        self.road_friction = road_friction
 
     def curvedBaseVelocity(self, global_path, point_num):
         out_vel_plan = []
-
+        # TODO: point_num보다 거리를 기준으로 하는 것이 더 좋을 수도 있음
         for i in range(0, point_num):
             out_vel_plan.append(self.car_max_speed)
 
@@ -253,21 +331,15 @@ class velocityPlanning:
             r = sqrt(a * a + b * b - c)
 
             # (7) 곡률 기반 속도 계획
-            # TODO: 회전할 때 r값이 얼마나 나오는지 출력해보기
-            if r > 50:
-                v_max = self.car_max_speed
-            else:
-                v_max = sqrt(r * 9.8 * self.road_friction)
+            v_max = sqrt(r * 9.8 * self.road_friction)
 
             if v_max > self.car_max_speed:
                 v_max = self.car_max_speed
             out_vel_plan.append(v_max)
 
-        for i in range(len(global_path.poses) - point_num, len(global_path.poses) - 10):
-            out_vel_plan.append(30)
+        for i in range(len(global_path.poses) - point_num, len(global_path.poses)):
+            out_vel_plan.append(v_max)
 
-        for i in range(len(global_path.poses) - 10, len(global_path.poses)):
-            out_vel_plan.append(0)
         print("out_vel_plan: ", out_vel_plan)
 
         return out_vel_plan
