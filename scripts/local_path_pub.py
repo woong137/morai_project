@@ -33,8 +33,6 @@ class path_pub:
         self.threshold = rospy.get_param('~local_path/threshold', 10)
         rate = rospy.Rate(rospy.get_param('~local_path/rate', 30))
 
-        # rate = rospy.Rate(30)
-
         while not rospy.is_shutdown():
 
             if self.is_status == True:
