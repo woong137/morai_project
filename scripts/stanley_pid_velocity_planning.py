@@ -146,9 +146,11 @@ class stanley:
                 elif self.switcher == "arrived":
                     self.ctrl_cmd_msg.longlCmdType = 2
                     self.ctrl_cmd_msg.velocity = 0.0
+                    self.ctrl_cmd_pub.publish(self.ctrl_cmd_msg)
                     print("##############")
                     print("#Goal Reached#")
                     print("##############")
+                    break
 
                 else:
                     print("switcher error")
@@ -197,16 +199,6 @@ class stanley:
         # 거리 계산
         distance = numerator / denominator
 
-        # 외적을 사용하여 P가 직선 AB의 왼쪽에 있는지 오른쪽에 있는지 판단
-        # cross_product = (point2.x - point1.x) * (ego_point.y - point1.y) - \
-        #     (ego_point.x - point1.x) * (point2.y - point1.y)
-
-        # # 외적의 부호에 따라 거리의 부호 결정
-        # if cross_product > 0:
-        #     # P가 AB의 왼쪽에 있으면 양수
-        #     return distance
-        # else:
-        #     # P가 AB의 오른쪽에 있으면 음수
         return distance
 
     def calc_stanley(self, front_wheel_position):
@@ -328,6 +320,10 @@ class velocityPlanning:
             b = x_matrix[1]
             c = x_matrix[2]
             r = sqrt(a * a + b * b - c)
+
+            # print("x: ", global_path.poses[i].pose.position.x)
+            # print("y: ", global_path.poses[i].pose.position.y)
+            # print("r: ", r)
 
             # (7) 곡률 기반 속도 계획
             v_max = sqrt(r * 9.8 * self.road_friction)
