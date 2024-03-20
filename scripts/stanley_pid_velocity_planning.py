@@ -296,16 +296,27 @@ class velocityPlanning:
     def __init__(self, car_max_speed, road_friction):
         self.car_max_speed = car_max_speed
         self.road_friction = road_friction
+        self.max_box_size = rospy.get_param('stanley/max_box_size', 50)
 
     def curvedBaseVelocity(self, global_path, point_num):
         out_vel_plan = []
         # TODO: point_num보다 거리를 기준으로 하는 것이 더 좋을 수도 있음
         for i in range(0, point_num):
-            out_vel_plan.append(self.car_max_speed)
+            out_vel_plan.append(10.0/3.6)
 
         for i in range(point_num, len(global_path.poses) - point_num):
             A_list = []
             B_list = []
+
+            while True:
+                dx = global_path.poses[i + point_num].pose.position.x - \
+                    global_path.poses[i - point_num].pose.position.x
+                dy = global_path.poses[i + point_num].pose.position.y - \
+                    global_path.poses[i - point_num].pose.position.y
+                box_size = sqrt(dx * dx + dy * dy)
+                if box_size < self.max_box_size:
+                    break
+                point_num -= 1
             for box in range(-point_num, point_num):
                 x = global_path.poses[i + box].pose.position.x
                 y = global_path.poses[i + box].pose.position.y
