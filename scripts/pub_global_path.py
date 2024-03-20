@@ -47,7 +47,7 @@ class dijkstra_path_pub:
         self.global_path_msg = Path()
         self.global_path_msg.header.frame_id = '/map'
 
-        rate = rospy.Rate(60)
+        rate = rospy.Rate(1)
 
         self.global_path_is_calculated = False
 
@@ -60,23 +60,43 @@ class dijkstra_path_pub:
                     result, path = self.global_planner.find_shortest_path(
                         start_node, end_node)
 
-                    for waypoint in path["point_path"]:
+                    # 보정된 경로
+                    corrected_path = self.correct_path(path["point_path"])
+
+                    for waypoint in corrected_path:
                         path_x = waypoint[0]
                         path_y = waypoint[1]
-                        # print(path_x, path_y)
                         read_pose = PoseStamped()
                         read_pose.pose.position.x = path_x
                         read_pose.pose.position.y = path_y
                         read_pose.pose.orientation.w = 1
-                        # print(read_pose)
                         self.global_path_msg.poses.append(read_pose)
 
             self.global_path_is_calculated = True
 
-            # print(self.global_path_msg)
             self.global_path_pub.publish(self.global_path_msg)
 
             rate.sleep()
+
+    def correct_path(self, original_path):
+        corrected_path = [original_path[0]]  # 시작점 추가
+        for i in range(1, len(original_path)):
+            prev_point = original_path[i - 1]
+            current_point = original_path[i]
+            distance = sqrt(
+                (current_point[0] - prev_point[0])**2 + (current_point[1] - prev_point[1])**2)
+            if distance > 1:  # 간격이 1m보다 큰 경우
+                num_intermediate_points = int(distance / 0.1)  # 보정할 중간 점 개수
+                delta_x = (current_point[0] - prev_point[0]) / \
+                    (num_intermediate_points + 1)
+                delta_y = (current_point[1] - prev_point[1]) / \
+                    (num_intermediate_points + 1)
+                for j in range(num_intermediate_points):
+                    corrected_x = prev_point[0] + (j + 1) * delta_x
+                    corrected_y = prev_point[1] + (j + 1) * delta_y
+                    corrected_path.append([corrected_x, corrected_y])
+            corrected_path.append(current_point)
+        return corrected_path
 
 
 class Dijkstra:
