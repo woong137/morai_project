@@ -47,6 +47,7 @@ class stanley:
         self.is_global_path = False
         self.switcher = "driving"
         self.current_position = Point()
+        self.prev_position = Point()
 
         self.end_position = Point(*rospy.get_param(
             'stanley/end_position', [166.5, -104.2, 0.0]))
@@ -60,7 +61,6 @@ class stanley:
             'stanley/target_velocity', 100)  # km/h
         self.window_size = rospy.get_param('stanley/window_size', 50)
         self.road_friction = rospy.get_param('stanley/road_friction', 0.15)
-
         rate = rospy.Rate(rospy.get_param('stanley/rate', 50))
 
         vel_kp = rospy.get_param('~pid_control/velocity/kp', 0.3)
@@ -92,7 +92,7 @@ class stanley:
 
         while not rospy.is_shutdown():
             if self.is_path == True and self.is_global_path == True and self.is_status == True:
-                print("switcher: ", self.switcher)
+                # print("switcher: ", self.switcher)
                 front_wheel_position = Point()
                 front_wheel_position.x = (
                     self.current_position.x +
@@ -126,20 +126,19 @@ class stanley:
 
                     # (8) 제어입력 메세지 Publish
                     # print("--------------------------")
-                    print(
-                        "current position: (",
-                        round(self.current_position.x, 2),
-                        ",",
-                        round(self.current_position.y, 2),
-                        ")",
-                    )
-                    print("target velocity: ", round(target_velocity, 2))
-                    print("current velocity: ", round(
-                        self.status_msg.velocity.x * 3.6, 2))
-                    print("velocity error: ", round(
-                        target_velocity - self.status_msg.velocity.x * 3.6, 2))
+                    # print(
+                    #     "current position: (",
+                    #     round(self.current_position.x, 2),
+                    #     ",",
+                    #     round(self.current_position.y, 2),
+                    #     ")",
+                    # )
+                    # print("velocity: ", round(
+                    #     self.status_msg.velocity.x * 3.6, 2), "/", round(target_velocity, 2))
+                    # print("velocity error: ", round(
+                    #     target_velocity - self.status_msg.velocity.x * 3.6, 2))
                     # print("accel: ", round(self.ctrl_cmd_msg.accel, 2))
-                    print("steering: ", round(steering, 2))
+                    # print("steering: ", round(steering, 2))
                     dis = self.stop_initiation_distance
                     tol = self.switch_stop_initiation_tolerance
                     if self.end_position.x - dis - tol < self.current_position.x < self.end_position.x - dis + tol \
@@ -154,11 +153,8 @@ class stanley:
                     if vel_input > self.target_velocity:
                         vel_input = self.target_velocity
                     self.ctrl_cmd_msg.velocity = vel_input
-
-                    arrived_tol = 0.3
-                    distance = sqrt(pow(self.current_position.x - self.end_position.x, 2) +
-                                    pow(self.current_position.y - self.end_position.y, 2))
-                    if distance < arrived_tol:
+                    distance = self.end_position.x - self.current_position.x - self.wheel_base
+                    if distance < 0.5:
                         self.switcher = "arrived"
 
                 elif self.switcher == "arrived":
@@ -269,10 +265,10 @@ class stanley:
         steering = psi + atan2(
             self.stanley_gain * local_path_point[1], self.status_msg.velocity.x
         )
-        print("path_yaw: ", path_yaw)
-        print("vehicle_yaw: ", self.vehicle_yaw)
-        print("psi: ", psi)
-        print("local_path_point[1]: ", local_path_point[1])
+        # print("path_yaw: ", path_yaw)
+        # print("vehicle_yaw: ", self.vehicle_yaw)
+        # print("psi: ", psi)
+        # print("local_path_point[1]: ", local_path_point[1])
         self.prev_steering = steering
 
         return steering
@@ -345,6 +341,7 @@ class velocityPlanning:
             # print("x: ", global_path.poses[i].pose.position.x)
             # print("y: ", global_path.poses[i].pose.position.y)
             # print("r: ", r)
+            # print("--------------------------")
 
             # (7) 곡률 기반 속도 계획
             v_max = sqrt(r * 9.8 * self.road_friction)
@@ -356,7 +353,7 @@ class velocityPlanning:
         for i in range(len(global_path.poses) - point_num, len(global_path.poses)):
             out_vel_plan.append(v_max)
 
-        print("out_vel_plan: ", out_vel_plan)
+        # print("out_vel_plan: ", out_vel_plan)
 
         return out_vel_plan
 
