@@ -1,5 +1,5 @@
 <launch>
-  <rosparam file="$(find morai_project)/param/param.yaml" command="load" />
+  <rosparam file="$(find morai_project)/param/mission1.yaml" command="load" />
 
   <node pkg="morai_project" type="local_path_pub.py" name="local_path_pub" />
   <!-- <node pkg="morai_project" type="lattice_planner.py" name="lattice_planner" /> -->
