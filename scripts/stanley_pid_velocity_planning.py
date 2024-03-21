@@ -88,12 +88,13 @@ class stanley:
             if self.is_global_path == True:
                 while True:
                     user_input = input("Press Any key to start:")
-                    print("hi")
                     start_cmd = EventInfo()
+                    start_cmd.option = 3
                     start_cmd.ctrl_mode = 3
                     start_cmd.gear = 4
                     start_cmd_resp = self.event_cmd_srv(start_cmd)
                     rospy.loginfo(start_cmd)
+
                     self.start_time = time.time()
                     break
                 self.velocitB_list = self.vel_planning.curvedBaseVelocity(
