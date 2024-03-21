@@ -9,7 +9,8 @@ import rospkg
 from math import cos, sin, pi, sqrt, pow, atan2
 from geometry_msgs.msg import Point, PoseWithCovarianceStamped
 from nav_msgs.msg import Odometry, Path
-from morai_msgs.msg import CtrlCmd, EgoVehicleStatus
+from morai_msgs.msg import CtrlCmd, EgoVehicleStatus, EventInfo
+from morai_msgs.srv import MoraiEventCmdSrv
 import numpy as np
 import tf
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
@@ -75,9 +76,26 @@ class stanley:
 
         self.vel_planning = velocityPlanning(
             self.target_velocity / 3.6, self.road_friction)
+
+        # service
+        rospy.wait_for_service('/Service_MoraiEventCmd', timeout=5)
+        self.event_cmd_srv = rospy.ServiceProxy(
+            'Service_MoraiEventCmd', MoraiEventCmdSrv)
+
         self.start_time = time.time()
+
         while True:
             if self.is_global_path == True:
+                while True:
+                    user_input = input("Press Any key to start:")
+                    print("hi")
+                    start_cmd = EventInfo()
+                    start_cmd.ctrl_mode = 3
+                    start_cmd.gear = 4
+                    start_cmd_resp = self.event_cmd_srv(start_cmd)
+                    rospy.loginfo(start_cmd)
+                    self.start_time = time.time()
+                    break
                 self.velocitB_list = self.vel_planning.curvedBaseVelocity(
                     self.global_path, self.window_size
                 )
