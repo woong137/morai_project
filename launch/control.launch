@@ -7,5 +7,5 @@
   <node pkg="morai_project" type="mgeo_pub.py" name="mgeo_pub" />
   <node pkg="morai_project" type="pub_global_path.py" name="dijkstra_path_pub" />
 
-  <node pkg="rviz" type="rviz" name="rviz" args="-d $(find morai_project)/rviz/test.rviz" />
+  <!-- <node pkg="rviz" type="rviz" name="rviz" args="-d $(find morai_project)/rviz/test.rviz" /> -->
 </launch>
