@@ -125,8 +125,8 @@ class latticePlanner:
             )
 
             global_ref_end_point = (
-                ref_path.poses[look_distance * 2].pose.position.x,
-                ref_path.poses[look_distance * 2].pose.position.y,
+                ref_path.poses[look_distance].pose.position.x,
+                ref_path.poses[look_distance].pose.position.y,
             )
 
             theta = atan2(
