@@ -46,10 +46,13 @@ class dijkstra_path_pub:
 
         self.global_path_msg = Path()
         self.global_path_msg.header.frame_id = '/map'
-        
-        self.intermediate_point_distance = 1.0
 
-        rate = rospy.Rate(1)
+        self.intermediate_point_distance = rospy.get_param(
+            '~global_path/intermediate_point_distance', 1.0)
+        rate = rospy.Rate(rospy.get_param('~global_path/rate', 1))
+
+        # self.intermediate_point_distance = 1.0
+        # rate = rospy.Rate(1)
 
         self.global_path_is_calculated = False
 
@@ -88,7 +91,8 @@ class dijkstra_path_pub:
             distance = sqrt(
                 (current_point[0] - prev_point[0])**2 + (current_point[1] - prev_point[1])**2)
             if distance > self.intermediate_point_distance:  # 간격이 1m보다 큰 경우
-                num_intermediate_points = int(distance / self.intermediate_point_distance)  # 보정할 중간 점 개수
+                num_intermediate_points = int(
+                    distance / self.intermediate_point_distance)  # 보정할 중간 점 개수
                 delta_x = (current_point[0] - prev_point[0]) / \
                     (num_intermediate_points + 1)
                 delta_y = (current_point[1] - prev_point[1]) / \

@@ -25,14 +25,14 @@ class path_pub:
         self.global_path_msg.header.frame_id = "/map"
 
         self.is_status = False
-        self.local_path_size = 30
-
         self.x = 0
         self.y = 0
-        self.threshold = 10
         self.current_waypoint = -1
 
-        rate = rospy.Rate(30)
+        self.local_path_size = rospy.get_param('~local_path/size', 30)
+        self.threshold = rospy.get_param('~local_path/threshold', 10)
+        rate = rospy.Rate(rospy.get_param('~local_path/rate', 30))
+
         while not rospy.is_shutdown():
 
             if self.is_status == True:
@@ -75,7 +75,8 @@ class path_pub:
 
                     else:
                         for num in range(
-                            self.current_waypoint, len(self.global_path_msg.poses)
+                            self.current_waypoint, len(
+                                self.global_path_msg.poses)
                         ):
                             tmp_pose = PoseStamped()
                             tmp_pose.pose.position.x = self.global_path_msg.poses[
