@@ -9,7 +9,9 @@ import rospkg
 from math import cos, sin, pi, sqrt, pow, atan2
 from geometry_msgs.msg import Point, PoseWithCovarianceStamped
 from nav_msgs.msg import Odometry, Path
-from morai_msgs.msg import CtrlCmd, EgoVehicleStatus
+from morai_msgs.msg import CtrlCmd, EgoVehicleStatus, EventInfo
+from morai_msgs.srv import MoraiEventCmdSrv
+from datetime import datetime
 import numpy as np
 import tf
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
@@ -75,9 +77,26 @@ class stanley:
 
         self.vel_planning = velocityPlanning(
             self.target_velocity / 3.6, self.road_friction)
-        self.start_time = time.time()
+
+        # service
+        rospy.wait_for_service('/Service_MoraiEventCmd', timeout=60)
+        self.event_cmd_srv = rospy.ServiceProxy(
+            'Service_MoraiEventCmd', MoraiEventCmdSrv)
+
         while True:
             if self.is_global_path == True:
+                while True:
+                    user_input = input("Press Any key to start:")
+                    start_cmd = EventInfo()
+                    start_cmd.option = 3
+                    start_cmd.ctrl_mode = 3
+                    start_cmd.gear = 4
+                    start_cmd_resp = self.event_cmd_srv(start_cmd)
+                    # rospy.loginfo(start_cmd)
+
+                    self.start_time = datetime.now()
+                    print("start time : ", self.start_time)
+                    break
                 self.velocitB_list = self.vel_planning.curvedBaseVelocity(
                     self.global_path, self.window_size
                 )
@@ -164,8 +183,10 @@ class stanley:
                     print("##############")
                     print("#Goal Reached#")
                     print("##############")
-                    end_time = time.time()
-                    print("Time: ", end_time - self.start_time)
+                    end_time = datetime.now()
+                    print("Goal Time:", end_time)
+                    print("Rap Time : ",
+                          end_time - self.start_time, "s")
                     break
 
                 else:
@@ -173,7 +194,7 @@ class stanley:
                     break
 
                 self.ctrl_cmd_pub.publish(self.ctrl_cmd_msg)
-            print("--------------------------")
+            # print("--------------------------")
 
             rate.sleep()
 
