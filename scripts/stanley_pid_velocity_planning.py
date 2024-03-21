@@ -36,7 +36,7 @@ class stanley:
         rospy.init_node("stanley", anonymous=False)
         # (1) subscriber, publisher 선언
         rospy.Subscriber("/global_path", Path, self.global_path_callback)
-        rospy.Subscriber("/local_path", Path, self.path_callback)
+        rospy.Subscriber("/lattice_path", Path, self.path_callback)
         rospy.Subscriber("/Ego_topic", EgoVehicleStatus, self.status_callback)
 
         self.ctrl_cmd_pub = rospy.Publisher(
