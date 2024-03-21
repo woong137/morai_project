@@ -1,9 +1,13 @@
 stanley:
-  end_position: [169.0, -104.2, 0.0] # 최종 목적지 (앞바퀴 중심)
-  stop_initiation_distance:
+  end_position: [170.71, -104.15, 0.0] # 최종 목적지 (시나리오 에디트 모드에서 확인한 값)
+  dash_velocity: 100 # km/h, dash case에서의 목표 속도
+  dash_initiation_distance:
     200 # 최종 목적지에서 이 파라미터만큼 떨어진 위치부터 stop case로 스위칭.
-    # stop case부터 최종 목적지까지의 거리에 대한 pid제어가 진행. 200m 이하로 설정
-  switch_stop_initiation_tolerance: 0.5 # stop case로 스위칭되는 위치로 인식되는 오차범위
+    # stop case부터 최종 목적지까지의 거리에 대한 pid제어가 진행. 200m 이하로 설정 권장. (뒷바퀴 중심 위치 기준)
+  switch_dash_initiation_tolerance: 0.5 # stop case로 스위칭되는 위치로 인식되는 오차범위
+  brake_initiation_distance: 35.0 # 최종 목적지에서 이 파라미터만큼 떨어진 위치부터 brake case로 스위칭 (뒷바퀴 중심 위치 기준)
+  # 100 → 0km/h 감속 거리 : 42.68m (reference: https://help-morai-sim-standard-4-6-kr.scrollhelp.site/mssmkv/Vehicle-Specification.127011819.html#VehicleSpecification-Hyundai-IONIQ
+  switch_brake_initiation_tolerance: 10 # brake case로 스위칭되는 위치로 인식되는 오차범위
   wheel_base: 2.7 # 앞바퀴와 뒷바퀴 사이의 거리(손대면 안됨)
   stanley_gain: 1.5 # stanley control gain(크면 핸들이 확확 꺾임)
   target_velocity: 60 # km/h, 목표 속도
@@ -20,9 +24,9 @@ pid_control:
     kd: 0.03
   # 위치 오차를 줄이기 위한 pid 제어 (stop case에서만 제어)
   position:
-    kp: 0.5
+    kp: 0.7
     ki: 0.0
-    kd: 0.0
+    kd: 1.0
 
 local_path:
   size: 100 # global path의 몇 개의 point를 가지고 local path를 생성할 것인가

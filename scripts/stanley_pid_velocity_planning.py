@@ -53,10 +53,15 @@ class stanley:
 
         self.end_position = Point(*rospy.get_param(
             'stanley/end_position', [166.5, -104.2, 0.0]))
-        self.stop_initiation_distance = rospy.get_param(
-            'stanley/stop_initiation_distance', 80)
-        self.switch_stop_initiation_tolerance = rospy.get_param(
-            'stanley/switch_stop_initiation_tolerance', 0.5)
+        self.dash_velocity = rospy.get_param('stanley/dash_velocity', 100)
+        self.dash_initiation_distance = rospy.get_param(
+            'stanley/dash_initiation_distance', 80)
+        self.switch_dash_initiation_tolerance = rospy.get_param(
+            'stanley/switch_dash_initiation_tolerance', 0.5)
+        self.brake_initiation_distance = rospy.get_param(
+            'stanley/brake_initiation_distance', 60)
+        self.switch_brake_initiation_tolerance = rospy.get_param(
+            'stanley/switch_brake_initiation_tolerance', 0.5)
         self.wheel_base = rospy.get_param('stanley/wheel_base', 2.7)
         self.stanley_gain = rospy.get_param('stanley/stanley_gain', 1.0)
         self.target_velocity = rospy.get_param(
@@ -159,13 +164,37 @@ class stanley:
                     #     target_velocity - self.status_msg.velocity.x * 3.6, 2))
                     # print("accel: ", round(self.ctrl_cmd_msg.accel, 2))
                     # print("steering: ", round(steering, 2))
-                    dis = self.stop_initiation_distance
-                    tol = self.switch_stop_initiation_tolerance
+                    dis = self.dash_initiation_distance
+                    tol = self.switch_dash_initiation_tolerance
                     if self.end_position.x - dis - tol < self.current_position.x < self.end_position.x - dis + tol \
                             and self.end_position.y - tol < self.current_position.y < self.end_position.y + tol:
-                        self.switcher = "stop"
+                        self.switcher = "dash"
 
-                elif self.switcher == "stop":
+                elif self.switcher == "dash":
+                    acc_input = self.vel_pid.pid(
+                        self.dash_velocity, self.status_msg.velocity.x * 3.6
+                    )
+
+                    if acc_input > 0.0:
+                        self.ctrl_cmd_msg.accel = acc_input
+                        self.ctrl_cmd_msg.brake = 0.0
+                    else:
+                        self.ctrl_cmd_msg.accel = 0.0
+                        self.ctrl_cmd_msg.brake = -acc_input
+
+                    dis = self.brake_initiation_distance
+                    tol = self.switch_brake_initiation_tolerance
+                    if self.end_position.x - dis - tol < self.current_position.x < self.end_position.x - dis + tol \
+                            and self.end_position.y - tol < self.current_position.y < self.end_position.y + tol:
+                        self.switcher = "brake"
+
+                elif self.switcher == "brake":
+                    self.ctrl_cmd_msg.accel = 0.0
+                    self.ctrl_cmd_msg.brake = 1.0
+                    if self.status_msg.velocity.x * 3.6 < 0.1:
+                        self.switcher = "stopping"
+
+                elif self.switcher == "stopping":
                     self.ctrl_cmd_msg.longlCmdType = 2
                     vel_input = self.pos_pid.pid(
                         self.end_position.x, self.current_position.x)
@@ -173,8 +202,8 @@ class stanley:
                     if vel_input > self.target_velocity:
                         vel_input = self.target_velocity
                     self.ctrl_cmd_msg.velocity = vel_input
-                    distance = self.end_position.x - self.current_position.x - self.wheel_base
-                    if distance < 0.5:
+                    distance = self.end_position.x - self.current_position.x
+                    if distance < 5.0:
                         self.switcher = "arrived"
 
                 elif self.switcher == "arrived":
