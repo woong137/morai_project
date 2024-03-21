@@ -15,12 +15,12 @@ stanley:
 pid_control:
   # 속도 오차를 줄이기 위한 pid 제어 (driving case에서만 제어)
   velocity:
-    kp: 7.0
+    kp: 0.3
     ki: 0.0
     kd: 0.03
   # 위치 오차를 줄이기 위한 pid 제어 (stop case에서만 제어)
   position:
-    kp: 5.0
+    kp: 0.5
     ki: 0.0
     kd: 0.0
 

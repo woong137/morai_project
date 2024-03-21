@@ -65,15 +65,16 @@ class stanley:
         self.road_friction = rospy.get_param('stanley/road_friction', 0.15)
         rate = rospy.Rate(rospy.get_param('stanley/rate', 50))
 
-        vel_kp = rospy.get_param('~pid_control/velocity/kp', 0.3)
-        vel_ki = rospy.get_param('~pid_control/velocity/ki', 0.0)
-        vel_kd = rospy.get_param('~pid_control/velocity/kd', 0.03)
-        pos_kp = rospy.get_param('~pid_control/position/kp', 0.5)
-        pos_ki = rospy.get_param('~pid_control/position/ki', 0.0)
-        pos_kd = rospy.get_param('~pid_control/position/kd', 0.0)
+        vel_kp = rospy.get_param('pid_control/velocity/kp', 0.3)
+        vel_ki = rospy.get_param('pid_control/velocity/ki', 0.0)
+        vel_kd = rospy.get_param('pid_control/velocity/kd', 0.03)
+        pos_kp = rospy.get_param('pid_control/position/kp', 0.5)
+        pos_ki = rospy.get_param('pid_control/position/ki', 0.0)
+        pos_kd = rospy.get_param('pid_control/position/kd', 0.0)
 
         self.vel_pid = pidControl(vel_kp, vel_ki, vel_kd)
         self.pos_pid = pidControl(pos_kp, pos_ki, pos_kd)
+        print("pid control: ", vel_kp, vel_ki, vel_kd, pos_kp, pos_ki, pos_kd)
 
         self.vel_planning = velocityPlanning(
             self.target_velocity / 3.6, self.road_friction)
