@@ -191,7 +191,7 @@ class stanley:
                 elif self.switcher == "brake":
                     self.ctrl_cmd_msg.accel = 0.0
                     self.ctrl_cmd_msg.brake = 1.0
-                    if self.status_msg.velocity.x * 3.6 < 0.1:
+                    if self.status_msg.velocity.x * 3.6 < 10.0:
                         self.switcher = "stopping"
 
                 elif self.switcher == "stopping":
@@ -215,7 +215,7 @@ class stanley:
                     print("##############")
                     end_time = datetime.now()
                     print("Goal Time:", end_time)
-                    print("Rap Time : ",
+                    print("Lap Time : ",
                           end_time - self.start_time, "s")
                     break
 
