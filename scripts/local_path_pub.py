@@ -29,9 +29,9 @@ class path_pub:
         self.y = 0
         self.current_waypoint = -1
 
-        self.local_path_size = rospy.get_param('~local_path/size', 30)
-        self.threshold = rospy.get_param('~local_path/threshold', 10)
-        rate = rospy.Rate(rospy.get_param('~local_path/rate', 30))
+        self.local_path_size = rospy.get_param('local_path/size', 30)
+        self.threshold = rospy.get_param('local_path/threshold', 10)
+        rate = rospy.Rate(rospy.get_param('local_path/rate', 30))
 
         while not rospy.is_shutdown():
 
