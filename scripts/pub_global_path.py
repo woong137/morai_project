@@ -48,8 +48,8 @@ class dijkstra_path_pub:
         self.global_path_msg.header.frame_id = '/map'
 
         self.intermediate_point_distance = rospy.get_param(
-            '~global_path/intermediate_point_distance', 1.0)
-        rate = rospy.Rate(rospy.get_param('~global_path/rate', 1))
+            'global_path/intermediate_point_distance', 1.0)
+        rate = rospy.Rate(rospy.get_param('global_path/rate', 1))
 
         # self.intermediate_point_distance = 1.0
         # rate = rospy.Rate(1)
