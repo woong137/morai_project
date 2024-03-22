@@ -79,7 +79,7 @@ class stanley:
 
         self.vel_pid = pidControl(vel_kp, vel_ki, vel_kd)
         self.pos_pid = pidControl(pos_kp, pos_ki, pos_kd)
-        print("pid control: ", vel_kp, vel_ki, vel_kd, pos_kp, pos_ki, pos_kd)
+        # print("pid control: ", vel_kp, vel_ki, vel_kd, pos_kp, pos_ki, pos_kd)
 
         self.vel_planning = velocityPlanning(
             self.target_velocity / 3.6, self.road_friction)
@@ -108,8 +108,8 @@ class stanley:
                 )
                 break
             else:
-                print("--------------------------")
-                print("Waiting global path data")
+                # print("--------------------------")
+                # print("Waiting global path data")
                 self.ctrl_cmd_msg.accel = 0.0
                 self.ctrl_cmd_msg.brake = 1.0
                 self.ctrl_cmd_pub.publish(self.ctrl_cmd_msg)
