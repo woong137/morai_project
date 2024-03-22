@@ -10,21 +10,21 @@ stanley:
   switch_brake_initiation_tolerance: 10 # brake case로 스위칭되는 위치로 인식되는 오차범위
   wheel_base: 2.7 # 앞바퀴와 뒷바퀴 사이의 거리(손대면 안됨)
   stanley_gain: 1.5 # stanley control gain(크면 핸들이 확확 꺾임)
-  target_velocity: 65 # km/h, 목표 속도
+  target_velocity: 60 # km/h, 목표 속도
   window_size: 25 # 속도 계획을 짤 때 몇 개의 point를 가지고 곡률을 계산할 것인가 def:25
   max_box_size: 30 # 속도 계획을 짜기 위한 곡률을 구할 때 box의 최대 크기
   road_friction: 0.4 # 도로 마찰 계수, 높을수록 곡선에서도 높은 속도를 냄
   rate: 100 # Hz, stanley control 주기
 
 pid_control:
-  # 속도 오차를 줄이기 위한 pid 제어 (driving case에서만 제어)
+  # 속도 오차를 줄이기 위한 pid 제어
   velocity:
     kp: 0.3
     ki: 0.0
     kd: 0.03
   # 위치 오차를 줄이기 위한 pid 제어 (stop case에서만 제어)
   position:
-    kp: 0.5
+    kp: 1.0
     ki: 0.0
     kd: 0.0
 
