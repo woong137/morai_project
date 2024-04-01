@@ -10,7 +10,7 @@ import copy
 import numpy as np
 import json
 
-from math import cos, sin, sqrt, pow, atan2, pi
+from math import cos, sin, sqrt, pow, atan2, pi, floor
 from geometry_msgs.msg import Point32, PoseStamped, PoseWithCovarianceStamped
 from nav_msgs.msg import Odometry, Path
 
@@ -19,6 +19,7 @@ sys.path.append(current_path)
 
 
 class dijkstra_path_pub:
+
     def __init__(self):
         # Init Nodes
         rospy.init_node('dijkstra_path_pub', anonymous=True)
@@ -29,6 +30,7 @@ class dijkstra_path_pub:
 
         waypoints = ["154S", "3E", "121S", "32E", "68S", "75S", "73S",
                      "85S", "82S", "78S", "124S", "122S", "8E", "111E", "203S"]
+        # waypoints = ["154S", "3E"]
 
         load_path = os.path.normpath(os.path.join(
             current_path, map_link))
@@ -47,12 +49,7 @@ class dijkstra_path_pub:
         self.global_path_msg = Path()
         self.global_path_msg.header.frame_id = '/map'
 
-        self.intermediate_point_distance = rospy.get_param(
-            'global_path/intermediate_point_distance', 1.0)
-        rate = rospy.Rate(rospy.get_param('global_path/rate', 1))
-
-        # self.intermediate_point_distance = 1.0
-        # rate = rospy.Rate(1)
+        rate = rospy.Rate(1)
 
         self.global_path_is_calculated = False
 
@@ -64,45 +61,75 @@ class dijkstra_path_pub:
                     start_node, end_node = waypoints[i], waypoints[i+1]
                     result, path = self.global_planner.find_shortest_path(
                         start_node, end_node)
+                    # set first x,y
+                    pv_x, pv_y = path["point_path"][0][0], path["point_path"][0][1]
 
-                    # 보정된 경로
-                    corrected_path = self.correct_path(path["point_path"])
-
-                    for waypoint in corrected_path:
+                    for waypoint in path["point_path"]:
                         path_x = waypoint[0]
                         path_y = waypoint[1]
-                        read_pose = PoseStamped()
-                        read_pose.pose.position.x = path_x
-                        read_pose.pose.position.y = path_y
-                        read_pose.pose.orientation.w = 1
-                        self.global_path_msg.poses.append(read_pose)
+                        #
+                        if ((self.cal_delta(pv_x, path_x) > 10)):
+                            read_pose = PoseStamped()
+                            read_pose.pose.position.x = path_x
+                            read_pose.pose.position.y = path_y
+                            read_pose.pose.orientation.w = 1
+                            delta_y = (path_y - pv_y) / \
+                                self.cal_delta(pv_x, path_x)
+                            # print("pv :", pv_x, pv_y)
+                            # print("path :", path_x, path_y)
+                            for i in range(0, floor(self.cal_delta(pv_x, path_x)), 10):
+                                if pv_x < path_x:
+                                    read_pose.pose.position.x = path_x - i
+                                else:
+                                    read_pose.pose.position.x = path_x + i
+                                read_pose.pose.position.y = path_y + i * delta_y
+                                print(read_pose.pose.position.x,
+                                      read_pose.pose.position.y)
+                                self.global_path_msg.poses.append(read_pose)
+
+                        elif ((self.cal_delta(pv_y, path_y) > 10)):
+                            read_pose = PoseStamped()
+                            read_pose.pose.position.x = path_x
+                            read_pose.pose.position.y = path_y
+                            read_pose.pose.orientation.w = 1
+                            delta_x = (path_x - pv_x) / \
+                                self.cal_delta(pv_y, path_y)
+                            # print("pv :", pv_x, pv_y)
+                            # print("path :", path_x, path_y)
+                            for i in range(0, floor(self.cal_delta(pv_y, path_y)), 10):
+                                if pv_y < path_y:
+                                    read_pose.pose.position.y = path_y - i
+                                else:
+                                    read_pose.pose.position.y = path_y + i
+                                read_pose.pose.position.x = path_x + i * delta_x
+                                print(read_pose.pose.position.x,
+                                      read_pose.pose.position.y)
+                                self.global_path_msg.poses.append(read_pose)
+                        else:
+                            # print(path_x, path_y)
+                            read_pose = PoseStamped()
+                            read_pose.pose.position.x = path_x
+                            read_pose.pose.position.y = path_y
+                            read_pose.pose.orientation.w = 1
+                            # print(read_pose)
+                            self.global_path_msg.poses.append(read_pose)
+                        pv_x, pv_y = read_pose.pose.position.x, read_pose.pose.position.y
+                        print("last_loc: ", pv_x, pv_y)
 
             self.global_path_is_calculated = True
 
+            # print(self.global_path_msg)
             self.global_path_pub.publish(self.global_path_msg)
 
             rate.sleep()
 
-    def correct_path(self, original_path):
-        corrected_path = [original_path[0]]  # 시작점 추가
-        for i in range(1, len(original_path)):
-            prev_point = original_path[i - 1]
-            current_point = original_path[i]
-            distance = sqrt(
-                (current_point[0] - prev_point[0])**2 + (current_point[1] - prev_point[1])**2)
-            if distance > self.intermediate_point_distance:  # 간격이 1m보다 큰 경우
-                num_intermediate_points = int(
-                    distance / self.intermediate_point_distance)  # 보정할 중간 점 개수
-                delta_x = (current_point[0] - prev_point[0]) / \
-                    (num_intermediate_points + 1)
-                delta_y = (current_point[1] - prev_point[1]) / \
-                    (num_intermediate_points + 1)
-                for j in range(num_intermediate_points):
-                    corrected_x = prev_point[0] + (j + 1) * delta_x
-                    corrected_y = prev_point[1] + (j + 1) * delta_y
-                    corrected_path.append([corrected_x, corrected_y])
-            corrected_path.append(current_point)
-        return corrected_path
+    def cal_distance(self, x1, y1, x2, y2):
+        dist = sqrt((x1-x2)**2 + (y1-y2)**2)
+        return dist
+
+    def cal_delta(self, x1, x2):
+        delta = abs(x1-x2)
+        return delta
 
 
 class Dijkstra:

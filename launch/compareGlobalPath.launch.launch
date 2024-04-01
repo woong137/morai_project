@@ -1,0 +1,6 @@
+<launch>
+  <node pkg="morai_project" type="pub_global_path_with_tight.py" name="stanley"/>
+  <node pkg="morai_project" type="pub_global_path.py" name="dijkstra_path_pub" />
+
+  <node pkg="rviz" type="rviz" name="rviz" args="-d $(find morai_project)/rviz/test.rviz" />
+</launch>

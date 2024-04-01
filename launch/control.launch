@@ -1,0 +1,11 @@
+<launch>
+  <rosparam file="$(find morai_project)/param/param.yaml" command="load" />
+
+  <node pkg="morai_project" type="local_path_pub.py" name="local_path_pub" />
+  <!-- <node pkg="morai_project" type="lattice_planner.py" name="lattice_planner" /> -->
+  <node pkg="morai_project" type="stanley_pid_velocity_planning.py" name="stanley" output="screen" />
+  <node pkg="morai_project" type="mgeo_pub.py" name="mgeo_pub" />
+  <node pkg="morai_project" type="pub_global_path.py" name="dijkstra_path_pub" />
+
+  <!-- <node pkg="rviz" type="rviz" name="rviz" args="-d $(find morai_project)/rviz/test.rviz" /> -->
+</launch>
